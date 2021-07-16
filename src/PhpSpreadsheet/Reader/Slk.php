@@ -9,6 +9,7 @@ use PhpOffice\PhpSpreadsheet\Reader\Exception as ReaderException;
 use PhpOffice\PhpSpreadsheet\Shared\StringHelper;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class Slk extends BaseReader
 {
@@ -78,7 +79,7 @@ class Slk extends BaseReader
         }
 
         // Read sample data (first 2 KB will do)
-        $data = fread($this->fileHandle, 2048);
+        $data = (string) fread($this->fileHandle, 2048);
 
         // Count delimiters in file
         $delimiterCount = substr_count($data, ';');
@@ -168,7 +169,7 @@ class Slk extends BaseReader
                 foreach ($rowData as $rowDatum) {
                     switch ($rowDatum[0]) {
                         case 'X':
-                            $columnIndex = substr($rowDatum, 1) - 1;
+                            $columnIndex = (int) substr($rowDatum, 1) - 1;
 
                             break;
                         case 'Y':
@@ -196,12 +197,12 @@ class Slk extends BaseReader
     /**
      * Loads PhpSpreadsheet from file.
      *
-     * @param string $pFilename
-     *
      * @return Spreadsheet
      */
-    public function load($pFilename)
+    public function load(string $pFilename, int $flags = 0)
     {
+        $this->processFlags($flags);
+
         // Create new Spreadsheet
         $spreadsheet = new Spreadsheet();
 
@@ -209,7 +210,7 @@ class Slk extends BaseReader
         return $this->loadIntoExisting($pFilename, $spreadsheet);
     }
 
-    private $colorArray = [
+    private const COLOR_ARRAY = [
         'FF00FFFF', // 0 - cyan
         'FF000000', // 1 - black
         'FFFFFFFF', // 2 - white
@@ -220,7 +221,7 @@ class Slk extends BaseReader
         'FFFF00FF', // 7 - magenta
     ];
 
-    private $fontStyleMappings = [
+    private const FONT_STYLE_MAPPINGS = [
         'B' => 'bold',
         'I' => 'italic',
         'U' => 'underline',
@@ -234,7 +235,8 @@ class Slk extends BaseReader
         $key = false;
         foreach ($temp as &$value) {
             //    Only count/replace in alternate array entries
-            if ($key = !$key) {
+            $key = !$key;
+            if ($key) {
                 preg_match_all('/(R(\[?-?\d*\]?))(C(\[?-?\d*\]?))/', $value, $cellReferences, PREG_SET_ORDER + PREG_OFFSET_CAPTURE);
                 //    Reverse the matches array, otherwise all our offsets will become incorrect if we modify our way
                 //        through the formula from left to right. Reversing means that we work right to left.through
@@ -250,7 +252,7 @@ class Slk extends BaseReader
                     }
                     //    Bracketed R references are relative to the current row
                     if ($rowReference[0] == '[') {
-                        $rowReference = $row + trim($rowReference, '[]');
+                        $rowReference = (int) $row + (int) trim($rowReference, '[]');
                     }
                     $columnReference = $cellReference[4][0];
                     //    Empty C reference is the current column
@@ -259,7 +261,7 @@ class Slk extends BaseReader
                     }
                     //    Bracketed C references are relative to the current column
                     if ($columnReference[0] == '[') {
-                        $columnReference = $column + trim($columnReference, '[]');
+                        $columnReference = (int) $column + (int) trim($columnReference, '[]');
                     }
                     $A1CellReference = Coordinate::stringFromColumnIndex($columnReference) . $rowReference;
 
@@ -356,9 +358,9 @@ class Slk extends BaseReader
         $this->addWidth($spreadsheet, $columnWidth, $startCol, $endCol);
     }
 
-    private $styleSettingsFont = ['D' => 'bold', 'I' => 'italic'];
+    private const STYLE_SETTINGS_FONT = ['D' => 'bold', 'I' => 'italic'];
 
-    private $styleSettingsBorder = [
+    private const STYLE_SETTINGS_BORDER = [
         'B' => 'bottom',
         'L' => 'left',
         'R' => 'right',
@@ -371,10 +373,10 @@ class Slk extends BaseReader
         $iMax = strlen($styleSettings);
         for ($i = 0; $i < $iMax; ++$i) {
             $char = $styleSettings[$i];
-            if (array_key_exists($char, $this->styleSettingsFont)) {
-                $styleData['font'][$this->styleSettingsFont[$char]] = true;
-            } elseif (array_key_exists($char, $this->styleSettingsBorder)) {
-                $styleData['borders'][$this->styleSettingsBorder[$char]]['borderStyle'] = Border::BORDER_THIN;
+            if (array_key_exists($char, self::STYLE_SETTINGS_FONT)) {
+                $styleData['font'][self::STYLE_SETTINGS_FONT[$char]] = true;
+            } elseif (array_key_exists($char, self::STYLE_SETTINGS_BORDER)) {
+                $styleData['borders'][self::STYLE_SETTINGS_BORDER[$char]]['borderStyle'] = Border::BORDER_THIN;
             } elseif ($char == 'S') {
                 $styleData['fill']['fillType'] = \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_PATTERN_GRAY125;
             } elseif ($char == 'M') {
@@ -408,7 +410,7 @@ class Slk extends BaseReader
     private function addStyle(Spreadsheet &$spreadsheet, array $styleData, string $row, string $column): void
     {
         if ((!empty($styleData)) && $column > '' && $row > '') {
-            $columnLetter = Coordinate::stringFromColumnIndex($column);
+            $columnLetter = Coordinate::stringFromColumnIndex((int) $column);
             $spreadsheet->getActiveSheet()->getStyle($columnLetter . $row)->applyFromArray($styleData);
         }
     }
@@ -418,14 +420,14 @@ class Slk extends BaseReader
         if ($columnWidth > '') {
             if ($startCol == $endCol) {
                 $startCol = Coordinate::stringFromColumnIndex((int) $startCol);
-                $spreadsheet->getActiveSheet()->getColumnDimension($startCol)->setWidth($columnWidth);
+                $spreadsheet->getActiveSheet()->getColumnDimension($startCol)->setWidth((float) $columnWidth);
             } else {
-                $startCol = Coordinate::stringFromColumnIndex($startCol);
-                $endCol = Coordinate::stringFromColumnIndex($endCol);
+                $startCol = Coordinate::stringFromColumnIndex((int) $startCol);
+                $endCol = Coordinate::stringFromColumnIndex((int) $endCol);
                 $spreadsheet->getActiveSheet()->getColumnDimension($startCol)->setWidth((float) $columnWidth);
                 do {
-                    $spreadsheet->getActiveSheet()->getColumnDimension(++$startCol)->setWidth($columnWidth);
-                } while ($startCol != $endCol);
+                    $spreadsheet->getActiveSheet()->getColumnDimension(++$startCol)->setWidth((float) $columnWidth);
+                } while ($startCol !== $endCol);
             }
         }
     }
@@ -468,7 +470,7 @@ class Slk extends BaseReader
     {
         if (preg_match('/L([1-9]\\d*)/', $rowDatum, $matches)) {
             $fontColor = $matches[1] % 8;
-            $formatArray['font']['color']['argb'] = $this->colorArray[$fontColor];
+            $formatArray['font']['color']['argb'] = self::COLOR_ARRAY[$fontColor];
         }
     }
 
@@ -477,8 +479,8 @@ class Slk extends BaseReader
         $styleSettings = substr($rowDatum, 1);
         $iMax = strlen($styleSettings);
         for ($i = 0; $i < $iMax; ++$i) {
-            if (array_key_exists($styleSettings[$i], $this->fontStyleMappings)) {
-                $formatArray['font'][$this->fontStyleMappings[$styleSettings[$i]]] = true;
+            if (array_key_exists($styleSettings[$i], self::FONT_STYLE_MAPPINGS)) {
+                $formatArray['font'][self::FONT_STYLE_MAPPINGS[$styleSettings[$i]]] = true;
             }
         }
     }
@@ -516,7 +518,7 @@ class Slk extends BaseReader
             $spreadsheet->createSheet();
         }
         $spreadsheet->setActiveSheetIndex($this->sheetIndex);
-        $spreadsheet->getActiveSheet()->setTitle(basename($pFilename, '.slk'));
+        $spreadsheet->getActiveSheet()->setTitle(substr(basename($pFilename, '.slk'), 0, Worksheet::SHEET_TITLE_MAXIMUM_LENGTH));
 
         // Loop through file
         $column = $row = '';

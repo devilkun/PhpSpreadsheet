@@ -5,13 +5,20 @@ namespace PhpOffice\PhpSpreadsheetTests\Worksheet;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Worksheet\ColumnCellIterator;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 class ColumnCellIteratorTest extends TestCase
 {
-    public $mockWorksheet;
+    /**
+     * @var Worksheet&MockObject
+     */
+    private $mockWorksheet;
 
-    public $mockCell;
+    /**
+     * @var Cell&MockObject
+     */
+    private $mockCell;
 
     protected function setUp(): void
     {
@@ -71,9 +78,19 @@ class ColumnCellIteratorTest extends TestCase
     public function testSeekOutOfRange(): void
     {
         $this->expectException(\PhpOffice\PhpSpreadsheet\Exception::class);
-
+        $this->expectExceptionMessage('Row 1 is out of range');
         $iterator = new ColumnCellIterator($this->mockWorksheet, 'A', 2, 4);
         $iterator->seek(1);
+    }
+
+    public function testSeekNotExisting(): void
+    {
+        $this->expectException(\PhpOffice\PhpSpreadsheet\Exception::class);
+        $this->expectExceptionMessage('Cell does not exist');
+
+        $iterator = new ColumnCellIterator($this->mockWorksheet, 'A', 2, 4);
+        $iterator->setIterateOnlyExistingCells(true);
+        $iterator->seek(2);
     }
 
     public function testPrevOutOfRange(): void

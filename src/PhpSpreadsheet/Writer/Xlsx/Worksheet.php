@@ -5,9 +5,12 @@ namespace PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\RichText\RichText;
+use PhpOffice\PhpSpreadsheet\Settings;
 use PhpOffice\PhpSpreadsheet\Shared\StringHelper;
 use PhpOffice\PhpSpreadsheet\Shared\XMLWriter;
 use PhpOffice\PhpSpreadsheet\Style\Conditional;
+use PhpOffice\PhpSpreadsheet\Style\ConditionalFormatting\ConditionalDataBar;
+use PhpOffice\PhpSpreadsheet\Style\ConditionalFormatting\ConditionalFormattingRuleExtension;
 use PhpOffice\PhpSpreadsheet\Worksheet\AutoFilter\Column;
 use PhpOffice\PhpSpreadsheet\Worksheet\AutoFilter\Column\Rule;
 use PhpOffice\PhpSpreadsheet\Worksheet\SheetView;
@@ -44,6 +47,7 @@ class Worksheet extends WriterPart
 
         $objWriter->writeAttribute('xmlns:xdr', 'http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing');
         $objWriter->writeAttribute('xmlns:x14', 'http://schemas.microsoft.com/office/spreadsheetml/2009/9/main');
+        $objWriter->writeAttribute('xmlns:xm', 'http://schemas.microsoft.com/office/excel/2006/main');
         $objWriter->writeAttribute('xmlns:mc', 'http://schemas.openxmlformats.org/markup-compatibility/2006');
         $objWriter->writeAttribute('mc:Ignorable', 'x14ac');
         $objWriter->writeAttribute('xmlns:x14ac', 'http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac');
@@ -113,6 +117,10 @@ class Worksheet extends WriterPart
 
         // AlternateContent
         $this->writeAlternateContent($objWriter, $pSheet);
+
+        // ConditionalFormattingRuleExtensionList
+        // (Must be inserted last. Not insert last, an Excel parse error will occur)
+        $this->writeExtLst($objWriter, $pSheet);
 
         $objWriter->endElement();
 
@@ -245,7 +253,7 @@ class Worksheet extends WriterPart
         // Pane
         $pane = '';
         if ($pSheet->getFreezePane()) {
-            [$xSplit, $ySplit] = Coordinate::coordinateFromString($pSheet->getFreezePane());
+            [$xSplit, $ySplit] = Coordinate::coordinateFromString($pSheet->getFreezePane() ?? '');
             $xSplit = Coordinate::columnIndexFromString($xSplit);
             --$xSplit;
             --$ySplit;
@@ -503,6 +511,94 @@ class Worksheet extends WriterPart
         }
     }
 
+    private static function writeExtConditionalFormattingElements(XMLWriter $objWriter, ConditionalFormattingRuleExtension $ruleExtension): void
+    {
+        $prefix = 'x14';
+        $objWriter->startElementNs($prefix, 'conditionalFormatting', null);
+
+        $objWriter->startElementNs($prefix, 'cfRule', null);
+        $objWriter->writeAttribute('type', $ruleExtension->getCfRule());
+        $objWriter->writeAttribute('id', $ruleExtension->getId());
+        $objWriter->startElementNs($prefix, 'dataBar', null);
+        $dataBar = $ruleExtension->getDataBarExt();
+        foreach ($dataBar->getXmlAttributes() as $attrKey => $val) {
+            $objWriter->writeAttribute($attrKey, $val);
+        }
+        $minCfvo = $dataBar->getMinimumConditionalFormatValueObject();
+        if ($minCfvo) {
+            $objWriter->startElementNs($prefix, 'cfvo', null);
+            $objWriter->writeAttribute('type', $minCfvo->getType());
+            if ($minCfvo->getCellFormula()) {
+                $objWriter->writeElement('xm:f', $minCfvo->getCellFormula());
+            }
+            $objWriter->endElement(); //end cfvo
+        }
+
+        $maxCfvo = $dataBar->getMaximumConditionalFormatValueObject();
+        if ($maxCfvo) {
+            $objWriter->startElementNs($prefix, 'cfvo', null);
+            $objWriter->writeAttribute('type', $maxCfvo->getType());
+            if ($maxCfvo->getCellFormula()) {
+                $objWriter->writeElement('xm:f', $maxCfvo->getCellFormula());
+            }
+            $objWriter->endElement(); //end cfvo
+        }
+
+        foreach ($dataBar->getXmlElements() as $elmKey => $elmAttr) {
+            $objWriter->startElementNs($prefix, $elmKey, null);
+            foreach ($elmAttr as $attrKey => $attrVal) {
+                $objWriter->writeAttribute($attrKey, $attrVal);
+            }
+            $objWriter->endElement(); //end elmKey
+        }
+        $objWriter->endElement(); //end dataBar
+        $objWriter->endElement(); //end cfRule
+        $objWriter->writeElement('xm:sqref', $ruleExtension->getSqref());
+        $objWriter->endElement(); //end conditionalFormatting
+    }
+
+    private static function writeDataBarElements(XMLWriter $objWriter, $dataBar): void
+    {
+        /** @var ConditionalDataBar $dataBar */
+        if ($dataBar) {
+            $objWriter->startElement('dataBar');
+            self::writeAttributeIf($objWriter, null !== $dataBar->getShowValue(), 'showValue', $dataBar->getShowValue() ? '1' : '0');
+
+            $minCfvo = $dataBar->getMinimumConditionalFormatValueObject();
+            if ($minCfvo) {
+                $objWriter->startElement('cfvo');
+                self::writeAttributeIf($objWriter, $minCfvo->getType(), 'type', (string) $minCfvo->getType());
+                self::writeAttributeIf($objWriter, $minCfvo->getValue(), 'val', (string) $minCfvo->getValue());
+                $objWriter->endElement();
+            }
+            $maxCfvo = $dataBar->getMaximumConditionalFormatValueObject();
+            if ($maxCfvo) {
+                $objWriter->startElement('cfvo');
+                self::writeAttributeIf($objWriter, $maxCfvo->getType(), 'type', (string) $maxCfvo->getType());
+                self::writeAttributeIf($objWriter, $maxCfvo->getValue(), 'val', (string) $maxCfvo->getValue());
+                $objWriter->endElement();
+            }
+            if ($dataBar->getColor()) {
+                $objWriter->startElement('color');
+                $objWriter->writeAttribute('rgb', $dataBar->getColor());
+                $objWriter->endElement();
+            }
+            $objWriter->endElement(); // end dataBar
+
+            if ($dataBar->getConditionalFormattingRuleExt()) {
+                $objWriter->startElement('extLst');
+                $extension = $dataBar->getConditionalFormattingRuleExt();
+                $objWriter->startElement('ext');
+                $objWriter->writeAttribute('uri', '{B025F937-C7B1-47D3-B67F-A62EFF666E3E}');
+                $objWriter->startElementNs('x14', 'id', null);
+                $objWriter->text($extension->getId());
+                $objWriter->endElement();
+                $objWriter->endElement();
+                $objWriter->endElement(); //end extLst
+            }
+        }
+    }
+
     /**
      * Write ConditionalFormatting.
      *
@@ -529,26 +625,40 @@ class Worksheet extends WriterPart
                     // cfRule
                     $objWriter->startElement('cfRule');
                     $objWriter->writeAttribute('type', $conditional->getConditionType());
-                    $objWriter->writeAttribute('dxfId', $this->getParentWriter()->getStylesConditionalHashTable()->getIndexForHashCode($conditional->getHashCode()));
+                    self::writeAttributeIf(
+                        $objWriter,
+                        ($conditional->getConditionType() != Conditional::CONDITION_DATABAR),
+                        'dxfId',
+                        $this->getParentWriter()->getStylesConditionalHashTable()->getIndexForHashCode($conditional->getHashCode())
+                    );
                     $objWriter->writeAttribute('priority', $id++);
 
                     self::writeAttributeif(
                         $objWriter,
-                        ($conditional->getConditionType() == Conditional::CONDITION_CELLIS || $conditional->getConditionType() == Conditional::CONDITION_CONTAINSTEXT)
-                        && $conditional->getOperatorType() != Conditional::OPERATOR_NONE,
+                        (
+                            $conditional->getConditionType() === Conditional::CONDITION_CELLIS
+                            || $conditional->getConditionType() === Conditional::CONDITION_CONTAINSTEXT
+                            || $conditional->getConditionType() === Conditional::CONDITION_NOTCONTAINSTEXT
+                        ) && $conditional->getOperatorType() !== Conditional::OPERATOR_NONE,
                         'operator',
                         $conditional->getOperatorType()
                     );
 
                     self::writeAttributeIf($objWriter, $conditional->getStopIfTrue(), 'stopIfTrue', '1');
 
-                    if ($conditional->getConditionType() == Conditional::CONDITION_CONTAINSTEXT) {
+                    if (
+                        $conditional->getConditionType() === Conditional::CONDITION_CONTAINSTEXT
+                        || $conditional->getConditionType() === Conditional::CONDITION_NOTCONTAINSTEXT
+                    ) {
                         self::writeTextCondElements($objWriter, $conditional, $cellCoordinate);
                     } else {
                         self::writeOtherCondElements($objWriter, $conditional, $cellCoordinate);
                     }
 
-                    $objWriter->endElement();
+                    //<dataBar>
+                    self::writeDataBarElements($objWriter, $conditional->getDataBar());
+
+                    $objWriter->endElement(); //end cfRule
 
                     $objWriter->endElement();
                 }
@@ -807,15 +917,18 @@ class Worksheet extends WriterPart
                                 $objWriter->writeAttribute('type', $rule->getGrouping());
                                 $val = $column->getAttribute('val');
                                 if ($val !== null) {
-                                    $objWriter->writeAttribute('val', $val);
+                                    $objWriter->writeAttribute('val', "$val");
                                 }
                                 $maxVal = $column->getAttribute('maxVal');
                                 if ($maxVal !== null) {
-                                    $objWriter->writeAttribute('maxVal', $maxVal);
+                                    $objWriter->writeAttribute('maxVal', "$maxVal");
                                 }
                             } elseif ($rule->getRuleType() === Rule::AUTOFILTER_RULETYPE_TOPTENFILTER) {
                                 //    Top 10 Filter Rule
-                                $objWriter->writeAttribute('val', $rule->getValue());
+                                $ruleValue = $rule->getValue();
+                                if (!is_array($ruleValue)) {
+                                    $objWriter->writeAttribute('val', "$ruleValue");
+                                }
                                 $objWriter->writeAttribute('percent', (($rule->getOperator() === Rule::AUTOFILTER_COLUMN_RULE_TOPTEN_PERCENT) ? '1' : '0'));
                                 $objWriter->writeAttribute('top', (($rule->getGrouping() === Rule::AUTOFILTER_COLUMN_RULE_TOPTEN_TOP) ? '1' : '0'));
                             } else {
@@ -827,14 +940,18 @@ class Worksheet extends WriterPart
                                 }
                                 if ($rule->getRuleType() === Rule::AUTOFILTER_RULETYPE_DATEGROUP) {
                                     // Date Group filters
-                                    foreach ($rule->getValue() as $key => $value) {
-                                        if ($value > '') {
-                                            $objWriter->writeAttribute($key, $value);
+                                    $ruleValue = $rule->getValue();
+                                    if (is_array($ruleValue)) {
+                                        foreach ($ruleValue as $key => $value) {
+                                            $objWriter->writeAttribute($key, "$value");
                                         }
                                     }
                                     $objWriter->writeAttribute('dateTimeGrouping', $rule->getGrouping());
                                 } else {
-                                    $objWriter->writeAttribute('val', $rule->getValue());
+                                    $ruleValue = $rule->getValue();
+                                    if (!is_array($ruleValue)) {
+                                        $objWriter->writeAttribute('val', "$ruleValue");
+                                    }
                                 }
 
                                 $objWriter->endElement();
@@ -981,7 +1098,7 @@ class Worksheet extends WriterPart
     private function writeSheetData(XMLWriter $objWriter, PhpspreadsheetWorksheet $pSheet, array $pStringTable): void
     {
         // Flipped stringtable, for faster index searching
-        $aFlippedStringTable = $this->getParentWriter()->getWriterPart('stringtable')->flipStringTable($pStringTable);
+        $aFlippedStringTable = $this->getParentWriter()->getWriterPartstringtable()->flipStringTable($pStringTable);
 
         // sheetData
         $objWriter->startElement('sheetData');
@@ -1063,10 +1180,13 @@ class Worksheet extends WriterPart
     {
         $objWriter->writeAttribute('t', $mappedType);
         if (!$cellValue instanceof RichText) {
-            $objWriter->writeElement('t', StringHelper::controlCharacterPHP2OOXML(htmlspecialchars($cellValue)));
+            $objWriter->writeElement(
+                't',
+                StringHelper::controlCharacterPHP2OOXML(htmlspecialchars($cellValue, Settings::htmlEntityFlags()))
+            );
         } elseif ($cellValue instanceof RichText) {
             $objWriter->startElement('is');
-            $this->getParentWriter()->getWriterPart('stringtable')->writeRichText($objWriter, $cellValue);
+            $this->getParentWriter()->getWriterPartstringtable()->writeRichText($objWriter, $cellValue);
             $objWriter->endElement();
         }
     }
@@ -1079,7 +1199,7 @@ class Worksheet extends WriterPart
     {
         $objWriter->writeAttribute('t', $mappedType);
         if (!$cellValue instanceof RichText) {
-            self::writeElementIf($objWriter, isset($pFlippedStringTable[$cellValue]), 'v', $pFlippedStringTable[$cellValue]);
+            self::writeElementIf($objWriter, isset($pFlippedStringTable[$cellValue]), 'v', $pFlippedStringTable[$cellValue] ?? '');
         } else {
             $objWriter->writeElement('v', $pFlippedStringTable[$cellValue->getHashCode()]);
         }
@@ -1125,8 +1245,10 @@ class Worksheet extends WriterPart
                 return;
             }
             $objWriter->writeAttribute('t', 'str');
+            $calculatedValue = StringHelper::controlCharacterPHP2OOXML($calculatedValue);
         } elseif (is_bool($calculatedValue)) {
             $objWriter->writeAttribute('t', 'b');
+            $calculatedValue = (int) $calculatedValue;
         }
         // array values are not yet supported
         //$attributes = $pCell->getFormulaAttributes();
@@ -1146,7 +1268,7 @@ class Worksheet extends WriterPart
             $objWriter,
             $this->getParentWriter()->getOffice2003Compatibility() === false,
             'v',
-            ($this->getParentWriter()->getPreCalculateFormulas() && !is_array($calculatedValue) && substr($calculatedValue, 0, 1) !== '#')
+            ($this->getParentWriter()->getPreCalculateFormulas() && !is_array($calculatedValue) && substr($calculatedValue ?? '', 0, 1) !== '#')
                 ? StringHelper::formatNumber($calculatedValue) : '0'
         );
     }
@@ -1277,6 +1399,40 @@ class Worksheet extends WriterPart
 
         foreach ($pSheet->getParent()->getUnparsedLoadedData()['sheets'][$pSheet->getCodeName()]['AlternateContents'] as $alternateContent) {
             $objWriter->writeRaw($alternateContent);
+        }
+    }
+
+    /**
+     * write <ExtLst>
+     * only implementation conditionalFormattings.
+     *
+     * @url https://docs.microsoft.com/en-us/openspecs/office_standards/ms-xlsx/07d607af-5618-4ca2-b683-6a78dc0d9627
+     */
+    private function writeExtLst(XMLWriter $objWriter, PhpspreadsheetWorksheet $pSheet): void
+    {
+        $conditionalFormattingRuleExtList = [];
+        foreach ($pSheet->getConditionalStylesCollection() as $cellCoordinate => $conditionalStyles) {
+            /** @var Conditional $conditional */
+            foreach ($conditionalStyles as $conditional) {
+                $dataBar = $conditional->getDataBar();
+                if ($dataBar && $dataBar->getConditionalFormattingRuleExt()) {
+                    $conditionalFormattingRuleExtList[] = $dataBar->getConditionalFormattingRuleExt();
+                }
+            }
+        }
+
+        if (count($conditionalFormattingRuleExtList) > 0) {
+            $conditionalFormattingRuleExtNsPrefix = 'x14';
+            $objWriter->startElement('extLst');
+            $objWriter->startElement('ext');
+            $objWriter->writeAttribute('uri', '{78C0D931-6437-407d-A8EE-F0AAD7539E65}');
+            $objWriter->startElementNs($conditionalFormattingRuleExtNsPrefix, 'conditionalFormattings', null);
+            foreach ($conditionalFormattingRuleExtList as $extension) {
+                self::writeExtConditionalFormattingElements($objWriter, $extension);
+            }
+            $objWriter->endElement(); //end conditionalFormattings
+            $objWriter->endElement(); //end ext
+            $objWriter->endElement(); //end extLst
         }
     }
 }

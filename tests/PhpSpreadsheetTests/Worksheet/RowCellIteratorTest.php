@@ -5,13 +5,20 @@ namespace PhpOffice\PhpSpreadsheetTests\Worksheet;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Worksheet\RowCellIterator;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 class RowCellIteratorTest extends TestCase
 {
-    public $mockWorksheet;
+    /**
+     * @var Worksheet&MockObject
+     */
+    private $mockWorksheet;
 
-    public $mockCell;
+    /**
+     * @var Cell&MockObject
+     */
+    private $mockCell;
 
     protected function setUp(): void
     {
@@ -73,9 +80,22 @@ class RowCellIteratorTest extends TestCase
     public function testSeekOutOfRange(): void
     {
         $this->expectException(\PhpOffice\PhpSpreadsheet\Exception::class);
+        $this->expectExceptionMessage('Column A is out of range');
 
         $iterator = new RowCellIterator($this->mockWorksheet, 2, 'B', 'D');
-        $iterator->seek(1);
+        self::assertFalse($iterator->getIterateOnlyExistingCells());
+        self::assertEquals(2, $iterator->getCurrentColumnIndex());
+        $iterator->seek('A');
+    }
+
+    public function testSeekNotExisting(): void
+    {
+        $this->expectException(\PhpOffice\PhpSpreadsheet\Exception::class);
+        $this->expectExceptionMessage('Cell does not exist');
+
+        $iterator = new RowCellIterator($this->mockWorksheet, 2, 'B', 'D');
+        $iterator->setIterateOnlyExistingCells(true);
+        $iterator->seek('B');
     }
 
     public function testPrevOutOfRange(): void

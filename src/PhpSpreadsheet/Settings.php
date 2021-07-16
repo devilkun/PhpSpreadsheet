@@ -68,6 +68,11 @@ class Settings
         return Calculation::getInstance()->setLocale($locale);
     }
 
+    public static function getLocale(): string
+    {
+        return Calculation::getInstance()->getLocale();
+    }
+
     /**
      * Identify to PhpSpreadsheet the external library to use for rendering charts.
      *
@@ -94,6 +99,11 @@ class Settings
         return self::$chartRenderer;
     }
 
+    public static function htmlEntityFlags(): int
+    {
+        return \ENT_COMPAT;
+    }
+
     /**
      * Set default options for libxml loader.
      *
@@ -118,7 +128,7 @@ class Settings
         if (self::$libXmlLoaderOptions === null && defined('LIBXML_DTDLOAD')) {
             self::setLibXmlLoaderOptions(LIBXML_DTDLOAD | LIBXML_DTDATTR);
         } elseif (self::$libXmlLoaderOptions === null) {
-            self::$libXmlLoaderOptions = true;
+            self::$libXmlLoaderOptions = 0;
         }
 
         return self::$libXmlLoaderOptions;

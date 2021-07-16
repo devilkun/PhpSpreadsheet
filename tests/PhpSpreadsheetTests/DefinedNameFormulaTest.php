@@ -3,6 +3,7 @@
 namespace PhpOffice\PhpSpreadsheetTests;
 
 use PhpOffice\PhpSpreadsheet\DefinedName;
+use PhpOffice\PhpSpreadsheet\NamedFormula;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PHPUnit\Framework\TestCase;
 
@@ -30,7 +31,7 @@ class DefinedNameFormulaTest extends TestCase
         }
 
         $allDefinedNames = $spreadSheet->getDefinedNames();
-        self::assertSame(count($definedNamesForTest), count($allDefinedNames));
+        self::assertCount(count($definedNamesForTest), $allDefinedNames);
     }
 
     public function testGetNamedRanges(): void
@@ -48,7 +49,7 @@ class DefinedNameFormulaTest extends TestCase
         }
 
         $allNamedRanges = $spreadSheet->getNamedRanges();
-        self::assertSame(count(array_filter($rangeOrFormula)), count($allNamedRanges));
+        self::assertCount(count(array_filter($rangeOrFormula)), $allNamedRanges);
     }
 
     public function testGetScopedNamedRange(): void
@@ -64,6 +65,7 @@ class DefinedNameFormulaTest extends TestCase
         $spreadSheet->addDefinedName(DefinedName::createInstance($rangeName, $workSheet, $localRangeValue, true));
 
         $localScopedRange = $spreadSheet->getNamedRange($rangeName, $workSheet);
+        self::assertNotNull($localScopedRange);
         self::assertSame($localRangeValue, $localScopedRange->getValue());
     }
 
@@ -82,6 +84,7 @@ class DefinedNameFormulaTest extends TestCase
         $spreadSheet->addDefinedName(DefinedName::createInstance($rangeName, $workSheet1, $localRangeValue, true));
 
         $localScopedRange = $spreadSheet->getNamedRange($rangeName, $workSheet2);
+        self::assertNotNull($localScopedRange);
         self::assertSame($globalRangeValue, $localScopedRange->getValue());
     }
 
@@ -100,7 +103,7 @@ class DefinedNameFormulaTest extends TestCase
         }
 
         $allNamedFormulae = $spreadSheet->getNamedFormulae();
-        self::assertSame(count(array_filter($rangeOrFormula)), count($allNamedFormulae));
+        self::assertCount(count(array_filter($rangeOrFormula)), $allNamedFormulae);
     }
 
     public function testGetScopedNamedFormula(): void
@@ -116,6 +119,7 @@ class DefinedNameFormulaTest extends TestCase
         $spreadSheet->addDefinedName(DefinedName::createInstance($formulaName, $workSheet, $localFormulaValue, true));
 
         $localScopedFormula = $spreadSheet->getNamedFormula($formulaName, $workSheet);
+        self::assertNotNull($localScopedFormula);
         self::assertSame($localFormulaValue, $localScopedFormula->getValue());
     }
 
@@ -134,6 +138,7 @@ class DefinedNameFormulaTest extends TestCase
         $spreadSheet->addDefinedName(DefinedName::createInstance($formulaName, $workSheet1, $localFormulaValue, true));
 
         $localScopedFormula = $spreadSheet->getNamedFormula($formulaName, $workSheet2);
+        self::assertNotNull($localScopedFormula);
         self::assertSame($globalFormulaValue, $localScopedFormula->getValue());
     }
 
@@ -163,5 +168,25 @@ class DefinedNameFormulaTest extends TestCase
             'utf-8 named ranges' => ['Γειά,σου Κόσμε', false],
             'utf-8 named ranges in a formula' => ['Здравствуй+мир', true],
         ];
+    }
+
+    public function testEmptyNamedFormula(): void
+    {
+        $this->expectException(\PhpOffice\PhpSpreadsheet\Exception::class);
+        $spreadSheet = new Spreadsheet();
+        $workSheet1 = $spreadSheet->getActiveSheet();
+        new NamedFormula('namedformula', $workSheet1);
+    }
+
+    public function testChangeFormula(): void
+    {
+        $spreadSheet = new Spreadsheet();
+        $workSheet1 = $spreadSheet->getActiveSheet();
+        $namedFormula = new NamedFormula('namedformula', $workSheet1, '=1');
+        self::assertEquals('=1', $namedFormula->getFormula());
+        $namedFormula->setFormula('=2');
+        self::assertEquals('=2', $namedFormula->getFormula());
+        $namedFormula->setFormula('');
+        self::assertEquals('=2', $namedFormula->getFormula());
     }
 }
