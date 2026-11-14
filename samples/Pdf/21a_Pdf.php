@@ -1,17 +1,22 @@
 <?php
 
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 use PhpOffice\PhpSpreadsheet\Writer\Pdf\Mpdf;
 
 require __DIR__ . '/../Header.php';
+/** @var PhpOffice\PhpSpreadsheet\Spreadsheet */
 $spreadsheet = require __DIR__ . '/../templates/sampleSpreadsheet.php';
 
+/** @var PhpOffice\PhpSpreadsheet\Helper\Sample $helper */
 $helper->log('Hide grid lines');
 $spreadsheet->getActiveSheet()->setShowGridLines(false);
 
 $helper->log('Set orientation to landscape');
 $spreadsheet->getActiveSheet()->getPageSetup()->setOrientation(PageSetup::ORIENTATION_LANDSCAPE);
 $spreadsheet->setActiveSheetIndex(0)->setPrintGridlines(true);
+// Issue 2299 - mpdf can't handle hide rows without kludge
+$spreadsheet->getActiveSheet()->getRowDimension(2)->setVisible(false);
 
 function changeGridlines(string $html): string
 {
@@ -19,7 +24,14 @@ function changeGridlines(string $html): string
 }
 
 $helper->log('Write to Mpdf');
-$writer = new Mpdf($spreadsheet);
-$filename = $helper->getFileName('21a_Pdf_mpdf.xlsx', 'pdf');
-$writer->setEditHtmlCallback('changeGridlines');
-$writer->save($filename);
+IOFactory::registerWriter('Pdf', Mpdf::class);
+$helper->write(
+    $spreadsheet,
+    __FILE__,
+    ['Pdf'],
+    false,
+    function (Mpdf $writer): void {
+        $writer->setEmbedImages(true);
+        $writer->setEditHtmlCallback('changeGridlines');
+    }
+);

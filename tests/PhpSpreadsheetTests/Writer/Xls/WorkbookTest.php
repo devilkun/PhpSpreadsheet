@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Writer\Xls;
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -10,14 +12,24 @@ use ReflectionClass;
 
 class WorkbookTest extends TestCase
 {
-    /**
-     * @var Workbook
-     */
-    private $workbook;
+    private Workbook $workbook;
 
-    protected function setUp(): void
+    private ?Spreadsheet $spreadsheet = null;
+
+    protected function tearDown(): void
     {
-        $spreadsheet = new Spreadsheet();
+        if ($this->spreadsheet !== null) {
+            $this->spreadsheet->disconnectWorksheets();
+            $this->spreadsheet = null;
+        }
+    }
+
+    private function setUpWorkbook(): void
+    {
+        if ($this->spreadsheet !== null) {
+            $this->spreadsheet->disconnectWorksheets();
+        }
+        $this->spreadsheet = $spreadsheet = new Spreadsheet();
         $strTotal = 0;
         $strUnique = 0;
         $str_table = [];
@@ -28,15 +40,14 @@ class WorkbookTest extends TestCase
     }
 
     /**
-     * @dataProvider providerAddColor
+     * @param string[] $testColors
+     * @param string[] $expectedResult
      */
-    public function testAddColor(array $testColors, array $expectedResult): void
+    public function xtestAddColor(array $testColors, array $expectedResult): void
     {
         $workbookReflection = new ReflectionClass(Workbook::class);
         $methodAddColor = $workbookReflection->getMethod('addColor');
         $propertyPalette = $workbookReflection->getProperty('palette');
-        $methodAddColor->setAccessible(true);
-        $propertyPalette->setAccessible(true);
 
         foreach ($testColors as $testColor) {
             $methodAddColor->invoke($this->workbook, $testColor);
@@ -47,15 +58,31 @@ class WorkbookTest extends TestCase
         self::assertEquals($expectedResult, $palette);
     }
 
-    public function providerAddColor()
+    public function testAddColor(): void
     {
-        $this->setUp();
+        $i = 0;
+        $arrayEntries = $this->arrayAddColor();
+        while ($i < count($arrayEntries)) {
+            /** @var string[] */
+            $entry0 = $arrayEntries[$i][0];
+            /** @var string[] */
+            $entry1 = $arrayEntries[$i][1];
+            $this->xtestAddColor($entry0, $entry1);
+            ++$i;
+            $arrayEntries = $this->arrayAddColor();
+        }
+    }
+
+    /** @return array<int, array<int, array<mixed>>> */
+    public function arrayAddColor(): array
+    {
+        $this->setUpWorkbook();
 
         $workbookReflection = new ReflectionClass(Workbook::class);
         $propertyPalette = $workbookReflection->getProperty('palette');
-        $propertyPalette->setAccessible(true);
 
         $palette = $propertyPalette->getValue($this->workbook);
+        self::assertIsArray($palette);
 
         $newColor1 = [0x00, 0x00, 0x01, 0x00];
         $newColor2 = [0x00, 0x00, 0x02, 0x00];
@@ -96,8 +123,15 @@ class WorkbookTest extends TestCase
         // Add last existing color and add one new color
         $keyPalette = array_keys($palette);
         $last = end($keyPalette);
+        self::assertIsArray($palette[8]);
+        self::assertIsArray($palette[10]);
+        self::assertIsArray($palette[12]);
+        self::assertIsArray($palette[25]);
+        self::assertIsArray($palette[$last]);
         $lastColor = $this->paletteToColor($palette[$last]);
+        // The last entry is above the custom range, so it does not fill the palette (issue #5065)
         $paletteTestNine = $palette;
+        $paletteTestNine[8] = $newColor1;
 
         return [
             [[$this->paletteToColor($newColor1)], $paletteTestOne],
@@ -115,15 +149,18 @@ class WorkbookTest extends TestCase
     /**
      * Change palette color to rgb string.
      *
-     * @param array $palette palette color
-     *
-     * @return string rgb string
+     * @param array<mixed, mixed> $palette
      */
-    private function paletteToColor($palette)
+    private function paletteToColor(array $palette): string
     {
-        return $this->right('00' . dechex((int) ($palette[0])), 2)
-            . $this->right('00' . dechex((int) ($palette[1])), 2)
-            . $this->right('00' . dechex((int) ($palette[2])), 2);
+        return $this->right('00' . self::dec2hex($palette[0]), 2)
+            . $this->right('00' . self::dec2hex($palette[1]), 2)
+            . $this->right('00' . self::dec2hex($palette[2]), 2);
+    }
+
+    private static function dec2hex(mixed $value): string
+    {
+        return is_numeric($value) ? dechex((int) $value) : '0';
     }
 
     /**
@@ -131,10 +168,8 @@ class WorkbookTest extends TestCase
      *
      * @param string $value text to get right character
      * @param int $nbchar number of char at right of string
-     *
-     * @return string
      */
-    private function right($value, $nbchar)
+    private function right(string $value, int $nbchar): string
     {
         return mb_substr($value, mb_strlen($value) - $nbchar, $nbchar);
     }

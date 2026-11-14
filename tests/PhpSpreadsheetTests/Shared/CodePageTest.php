@@ -1,25 +1,34 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Shared;
 
 use PhpOffice\PhpSpreadsheet\Exception;
 use PhpOffice\PhpSpreadsheet\Shared\CodePage;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class CodePageTest extends TestCase
 {
     /**
-     * @dataProvider providerCodePage
-     *
-     * @param mixed $expectedResult
+     * @param string|string[] $expectedResult
      */
-    public function testCodePageNumberToName($expectedResult, ...$args): void
+    #[DataProvider('providerCodePage')]
+    public function testCodePageNumberToName(array|string $expectedResult, int $codePageIndex): void
     {
-        $result = CodePage::numberToName(...$args);
-        self::assertEquals($expectedResult, $result);
+        if ($expectedResult === 'exception') {
+            $this->expectException(Exception::class);
+        }
+        $result = CodePage::numberToName($codePageIndex);
+        if (is_array($expectedResult)) {
+            self::assertContains($result, $expectedResult);
+        } else {
+            self::assertEquals($expectedResult, $result);
+        }
     }
 
-    public function providerCodePage()
+    public static function providerCodePage(): array
     {
         return require 'tests/data/Shared/CodePage.php';
     }
@@ -33,6 +42,7 @@ class CodePageTest extends TestCase
         }
         $tests = $this->providerCodePage();
         foreach ($tests as $test) {
+            /** @var string[] $test */
             $covered[$test[1]] = 1;
         }
         foreach ($covered as $key => $val) {

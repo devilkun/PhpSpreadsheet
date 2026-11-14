@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     [
         true,
@@ -36,4 +38,6 @@ return [
         '  ',
         '',
     ],
+    'no arguments' => ['exception'],
+    'one argument1' => ['exception', 'abc'],
 ];

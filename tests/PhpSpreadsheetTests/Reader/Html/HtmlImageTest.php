@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Reader\Html;
 
 use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
@@ -13,18 +15,17 @@ class HtmlImageTest extends TestCase
 
         $html = '<table>
                     <tr>
-                        <td><img src="' . $imagePath . '" alt="test image"></td>
+                        <td><img src="' . $imagePath . '" alt="test image voilà"></td>
                     </tr>
                 </table>';
-        $filename = HtmlHelper::createHtml($html);
-        $spreadsheet = HtmlHelper::loadHtmlIntoSpreadsheet($filename, true);
+        $spreadsheet = HtmlHelper::loadHtmlStringIntoSpreadsheet($html);
         $firstSheet = $spreadsheet->getSheet(0);
 
         /** @var Drawing $drawing */
         $drawing = $firstSheet->getDrawingCollection()[0];
         self::assertEquals($imagePath, $drawing->getPath());
         self::assertEquals('A1', $drawing->getCoordinates());
-        self::assertEquals('test image', $drawing->getName());
+        self::assertEquals('test image voilà', $drawing->getName());
         self::assertEquals('100', $drawing->getWidth());
         self::assertEquals('100', $drawing->getHeight());
     }
@@ -38,8 +39,7 @@ class HtmlImageTest extends TestCase
                         <td><img src="' . $imagePath . '" alt="test image" width="50"></td>
                     </tr>
                 </table>';
-        $filename = HtmlHelper::createHtml($html);
-        $spreadsheet = HtmlHelper::loadHtmlIntoSpreadsheet($filename, true);
+        $spreadsheet = HtmlHelper::loadHtmlStringIntoSpreadsheet($html);
         $firstSheet = $spreadsheet->getSheet(0);
 
         /** @var Drawing $drawing */
@@ -57,8 +57,7 @@ class HtmlImageTest extends TestCase
                         <td><img src="' . $imagePath . '" height="75"></td>
                     </tr>
                 </table>';
-        $filename = HtmlHelper::createHtml($html);
-        $spreadsheet = HtmlHelper::loadHtmlIntoSpreadsheet($filename, true);
+        $spreadsheet = HtmlHelper::loadHtmlStringIntoSpreadsheet($html);
         $firstSheet = $spreadsheet->getSheet(0);
 
         /** @var Drawing $drawing */
@@ -75,8 +74,7 @@ class HtmlImageTest extends TestCase
                         <td><img></td>
                     </tr>
                 </table>';
-        $filename = HtmlHelper::createHtml($html);
-        $spreadsheet = HtmlHelper::loadHtmlIntoSpreadsheet($filename, true);
+        $spreadsheet = HtmlHelper::loadHtmlStringIntoSpreadsheet($html);
         $firstSheet = $spreadsheet->getSheet(0);
 
         self::assertCount(0, $firstSheet->getDrawingCollection());

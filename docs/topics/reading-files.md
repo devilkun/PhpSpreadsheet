@@ -44,6 +44,22 @@ practise), it will reject the Xls loader that it would normally use for
 a .xls file; and test the file using the other loaders until it finds
 the appropriate loader, and then use that to read the file.
 
+If you know that this is an `xls` file, but don't know whether it is a
+genuine BIFF-format Excel or Html markup with an xls extension, you can
+limit the loader to check only those two possibilities by passing in an
+array of Readers to test against.
+
+```php
+$inputFileName = './sampleData/example1.xls';
+$testAgainstFormats = [
+    \PhpOffice\PhpSpreadsheet\IOFactory::READER_XLS,
+    \PhpOffice\PhpSpreadsheet\IOFactory::READER_HTML,
+];
+
+/** Load $inputFileName to a Spreadsheet Object  **/
+$spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($inputFileName, 0, $testAgainstFormats);
+```
+
 While easy to implement in your code, and you don't need to worry about
 the file type; this isn't the most efficient method to load a file; and
 it lacks the flexibility to configure the loader in any way before
@@ -107,7 +123,10 @@ method to identify the reader that you need, before using the
 ```php
 $inputFileName = './sampleData/example1.xls';
 
-/**  Identify the type of $inputFileName  **/
+/**
+ * Identify the type of $inputFileName.
+ * See below for a possible improvement for release 4.1.0+.
+ */
 $inputFileType = \PhpOffice\PhpSpreadsheet\IOFactory::identify($inputFileName);
 /**  Create a new Reader of the type that has been identified  **/
 $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader($inputFileType);
@@ -118,11 +137,131 @@ $spreadsheet = $reader->load($inputFileName);
 See `samples/Reader/04_Simple_file_reader_using_the_IOFactory_to_identify_a_reader_to_use.php`
 for a working example of this code.
 
+Prior to release 4.1.0, `identify` returns a file type.
+It may be more useful to return a fully-qualified class name,
+which can be accomplished using a parameter introduced in 4.1.0:
+
+```php
+$inputFileType = \PhpOffice\PhpSpreadsheet\IOFactory::identify($inputFileName, null, true);
+```
+
+As with the IOFactory `load()` method, you can also pass an array of formats
+for  the `identify()` method to check against if you know that it will only
+be in a subset of the possible formats that PhpSpreadsheet supports.
+
+```php
+$inputFileName = './sampleData/example1.xls';
+$testAgainstFormats = [
+    \PhpOffice\PhpSpreadsheet\IOFactory::READER_XLS,
+    \PhpOffice\PhpSpreadsheet\IOFactory::READER_HTML,
+];
+
+/**  Identify the type of $inputFileName  **/
+$inputFileType = \PhpOffice\PhpSpreadsheet\IOFactory::identify($inputFileName, $testAgainstFormats);
+```
+
+You can also use this to confirm that a file is what it claims to be:
+
+```php
+$inputFileName = './sampleData/example1.xls';
+
+try {
+    /**  Verify that $inputFileName really is an Xls file **/
+    $inputFileType = \PhpOffice\PhpSpreadsheet\IOFactory::identify($inputFileName, [\PhpOffice\PhpSpreadsheet\IOFactory::READER_XLS]);
+} catch (\PhpOffice\PhpSpreadsheet\Reader\Exception $e) {
+    // File isn't actually an Xls file, even though it has an xls extension 
+}
+```
+
 ## Spreadsheet Reader Options
 
 Once you have created a reader object for the workbook that you want to
 load, you have the opportunity to set additional options before
 executing the `load()` method.
+
+All of these options can be set by calling the appropriate methods against the Reader (as described below), but some options (those with only two possible values) can also be set through flags, either by calling the Reader's `setFlags()` method, or passing the flags as an argument in the call to `load()`.
+Those options that can be set through flags are:
+
+Option             | Flag                                | Default
+-------------------|-------------------------------------|------------------------
+Empty Cells        | IReader::IGNORE_EMPTY_CELLS         | Load empty cells
+Rows with no Cells | IReader::IGNORE_ROWS_WITH_NO_CELLS  | Load rows with no cells
+Data Only          | IReader::READ_DATA_ONLY             | Read data, structure and style
+Charts             | IReader::LOAD_WITH_CHARTS           | Don't read charts
+
+Several flags can be combined in a single call:
+
+```php
+$inputFileType = 'Xlsx';
+$inputFileName = './sampleData/example1.xlsx';
+
+/**  Create a new Reader of the type defined in $inputFileType  **/
+$reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader($inputFileType);
+/** Set additional flags before the call to load() */
+$reader->setFlags(IReader::IGNORE_EMPTY_CELLS | IReader::LOAD_WITH_CHARTS);
+$reader->load($inputFileName);
+```
+or
+
+```php
+$inputFileType = 'Xlsx';
+$inputFileName = './sampleData/example1.xlsx';
+
+/**  Create a new Reader of the type defined in $inputFileType  **/
+$reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader($inputFileType);
+/** Set additional flags in the call to load() */
+$reader->load($inputFileName, IReader::IGNORE_EMPTY_CELLS | IReader::LOAD_WITH_CHARTS);
+```
+
+### Ignoring Empty Cells
+
+Many Excel files have empty rows or columns at the end of a worksheet, which can't easily be seen when looking at the file in Excel (Try using Ctrl-End to see the last cell in a worksheet).
+By default, PhpSpreadsheet will load these cells, because they are valid Excel values; but you may find that an apparently small spreadsheet requires a lot of memory for all those empty cells.
+If you are running into memory issues with seemingly small files, you can tell PhpSpreadsheet not to load those empty cells using the `setReadEmptyCells()` method. 
+
+```php
+$inputFileType = 'Xls';
+$inputFileName = './sampleData/example1.xls';
+
+/**  Create a new Reader of the type defined in $inputFileType  **/
+$reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader($inputFileType);
+/**  Advise the Reader that we only want to load cell's that contain actual content  **/
+$reader->setReadEmptyCells(false);
+/**  Load $inputFileName to a Spreadsheet Object  **/
+$spreadsheet = $reader->load($inputFileName);
+```
+
+Note that cells containing formulae will still be loaded, even if that formula evaluates to a NULL or an empty string.
+Similarly, Conditional Styling might also hide the value of a cell; but cells that contain Conditional Styling or Data Validation will always be loaded regardless of their value.
+
+This option is available for the following formats:
+
+Reader    | Y/N |Reader  | Y/N |Reader        | Y/N |
+----------|:---:|--------|:---:|--------------|:---:|
+Xlsx      | YES | Xls    | YES | Xml          | NO  |
+Ods       | NO  | SYLK   | NO  | Gnumeric     | NO  |
+CSV       | NO  | HTML   | NO
+
+This option is also available through flags.
+
+### Ignoring Rows With No Cells
+
+Similar to the previous item, you can choose to ignore rows which contain no cells.
+This can also help with memory issues.
+
+```php
+$inputFileType = 'Xlsx';
+$inputFileName = './sampleData/example1.xlsx';
+
+/**  Create a new Reader of the type defined in $inputFileType  **/
+$reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader($inputFileType);
+/**  Advise the Reader that we do not want rows with no cells  **/
+$reader->setIgnoreRowsWithNoCells(true);
+/**  Load $inputFileName to a Spreadsheet Object  **/
+$spreadsheet = $reader->load($inputFileName);
+```
+
+This option is available only for Xlsx. It is also available through flags.
 
 ### Reading Only Data from a Spreadsheet File
 
@@ -146,7 +285,7 @@ $spreadsheet = $reader->load($inputFileName);
 See `samples/Reader/05_Simple_file_reader_using_the_read_data_only_option.php`
 for a working example of this code.
 
-It is important to note that Workbooks (and PhpSpreadsheet) store dates
+It is important to note that most Workbooks (and PhpSpreadsheet) store dates
 and times as simple numeric values: they can only be distinguished from
 other numeric values by the format mask that is applied to that cell.
 When setting read data only to true, PhpSpreadsheet doesn't read the
@@ -162,9 +301,11 @@ Reading Only Data from a Spreadsheet File applies to Readers:
 
 Reader    | Y/N |Reader  | Y/N |Reader        | Y/N |
 ----------|:---:|--------|:---:|--------------|:---:|
-Xlsx      | YES | Xls | YES | Xml | YES |
-Ods    | YES | SYLK   | NO  | Gnumeric     | YES |
+Xlsx      | YES | Xls    | YES | Xml          | YES |
+Ods       | YES | SYLK   | NO  | Gnumeric     | YES |
 CSV       | NO  | HTML   | NO
+
+This option is also available through flags.
 
 ### Reading Only Named WorkSheets from a File
 
@@ -233,8 +374,8 @@ Reading Only Named WorkSheets from a File applies to Readers:
 
 Reader    | Y/N |Reader  | Y/N |Reader        | Y/N |
 ----------|:---:|--------|:---:|--------------|:---:|
-Xlsx      | YES | Xls | YES | Xml | YES |
-Ods    | YES | SYLK   | NO  | Gnumeric     | YES |
+Xlsx      | YES | Xls    | YES | Xml          | YES |
+Ods       | YES | SYLK   | NO  | Gnumeric     | YES |
 CSV       | NO  | HTML   | NO
 
 ### Reading Only Specific Columns and Rows from a File (Read Filters)
@@ -256,10 +397,10 @@ $sheetname = 'Data Sheet #3';
 /**  Define a Read Filter class implementing \PhpOffice\PhpSpreadsheet\Reader\IReadFilter  */
 class MyReadFilter implements \PhpOffice\PhpSpreadsheet\Reader\IReadFilter
 {
-    public function readCell($column, $row, $worksheetName = '') {
+    public function readCell($columnAddress, $row, $worksheetName = '') {
         //  Read rows 1 to 7 and columns A to E only
         if ($row >= 1 && $row <= 7) {
-            if (in_array($column,range('A','E'))) {
+            if (in_array($columnAddress,range('A','E'))) {
                 return true;
             }
         }
@@ -301,10 +442,10 @@ class MyReadFilter implements \PhpOffice\PhpSpreadsheet\Reader\IReadFilter
         $this->columns  = $columns;
     }
 
-    public function readCell($column, $row, $worksheetName = '') {
+    public function readCell($columnAddress, $row, $worksheetName = '') {
         //  Only read the rows and columns that were configured
         if ($row >= $this->startRow && $row <= $this->endRow) {
-            if (in_array($column,$this->columns)) {
+            if (in_array($columnAddress,$this->columns)) {
                 return true;
             }
         }
@@ -324,25 +465,34 @@ to read and process a large workbook in "chunks": an example of this
 usage might be when transferring data from an Excel worksheet to a
 database.
 
+Read Filtering does not renumber cell rows and columns. If you filter to read only rows 100-200, cells that you read will still be numbered A100-A200, not A1-A101. Cells A1-A99 will not be loaded, but if you then try to call `getCell()` for a cell outside your loaded range, then PHPSpreadsheet will create a new cell with a null value.
+
+Methods such as `toArray()` assume that all cells in a spreadsheet has been loaded from A1, so will return null values for rows and columns that fall outside your filter range: it is recommended that you keep track of the range that your filter has requested, and use `rangeToArray()` instead.
+
 ```php
 $inputFileType = 'Xls';
 $inputFileName = './sampleData/example2.xls';
 
-/**  Define a Read Filter class implementing \PhpOffice\PhpSpreadsheet\Reader\IReadFilter  */
+/**  Define a Read Filter class implementing IReadFilter  */
 class ChunkReadFilter implements \PhpOffice\PhpSpreadsheet\Reader\IReadFilter
 {
-    private $startRow = 0;
-    private $endRow   = 0;
+    private int $startRow = 0;
+    private int $endRow = 0;
 
     /**  Set the list of rows that we want to read  */
-    public function setRows($startRow, $chunkSize) {
+    public function setRows(int $startRow, int $chunkSize): void
+    {
         $this->startRow = $startRow;
-        $this->endRow   = $startRow + $chunkSize;
+        $this->endRow = $startRow + $chunkSize;
     }
 
-    public function readCell($column, $row, $worksheetName = '') {
+    public function readCell(
+        string $columnAddress,
+        int $row,
+        string $worksheetName = ''
+    ): bool {
         //  Only read the heading row, and the configured rows
-        if (($row == 1) || ($row >= $this->startRow && $row < $this->endRow)) {
+        if (($row === 1) || ($row >= $this->startRow && $row < $this->endRow)) {
             return true;
         }
         return false;
@@ -377,7 +527,7 @@ Using Read Filters applies to:
 
 Reader    | Y/N |Reader  | Y/N |Reader        | Y/N |
 ----------|:---:|--------|:---:|--------------|:---:|
-Xlsx      | YES | Xls    | YES | Xml | YES |
+Xlsx      | YES | Xls    | YES | Xml          | YES |
 Ods       | YES | SYLK   | NO  | Gnumeric     | YES |
 CSV       | YES | HTML   | NO  |              |     |
 
@@ -435,7 +585,7 @@ Combining Multiple Files into a Single Spreadsheet Object applies to:
 
 Reader    | Y/N |Reader  | Y/N |Reader        | Y/N |
 ----------|:---:|--------|:---:|--------------|:---:|
-Xlsx      | NO  | Xls    | NO  | Xml | NO  |
+Xlsx      | NO  | Xls    | NO  | Xml          | NO  |
 Ods       | NO  | SYLK   | YES | Gnumeric     | NO  |
 CSV       | YES | HTML   | NO
 
@@ -512,7 +662,7 @@ Splitting a single loaded file across multiple worksheets applies to:
 
 Reader    | Y/N |Reader  | Y/N |Reader        | Y/N |
 ----------|:---:|--------|:---:|--------------|:---:|
-Xlsx      | NO  | Xls    | NO  | Xml | NO  |
+Xlsx      | NO  | Xls    | NO  | Xml          | NO  |
 Ods       | NO  | SYLK   | NO  | Gnumeric     | NO  |
 CSV       | YES | HTML   | NO
 
@@ -552,11 +702,62 @@ Setting CSV delimiter applies to:
 
 Reader    | Y/N |Reader  | Y/N |Reader        | Y/N |
 ----------|:---:|--------|:---:|--------------|:---:|
-Xlsx      | NO  | Xls    | NO  | Xml | NO  |
+Xlsx      | NO  | Xls    | NO  | Xml          | NO  |
 Ods       | NO  | SYLK   | NO  | Gnumeric     | NO  |
 CSV       | YES | HTML   | NO
 
-### A Brief Word about the Advanced Value Binder
+
+### Reading formatted Numbers from a CSV File
+
+Unfortunately, numbers in a CSV file may be formatted as strings.
+If that number is a simple integer or float (with a decimal `.` separator) without any thousands separator, then it will be treated as a number.
+However, if the value has a thousands separator (e.g. `12,345`), or a decimal separator that isn't a `.` (e.g. `123,45` for a European locale), then it will be loaded as a string with that formatting.
+If you want the Csv Reader to convert that value to a numeric when it loads the file, the you need to tell it to do so. The `castFormattedNumberToNumeric()` lets you do this.
+
+(Assuming that our server is configured with German locale settings: otherwise it may be necessary to call `setlocale()` before loading the file.)
+
+```php
+$inputFileType = 'Csv';
+$inputFileName = './sampleData/example1.de.csv';
+
+/** It may be necessary to call setlocale() first if this is not your default locale  */
+// setlocale(LC_ALL, 'de_DE.UTF-8', 'deu_deu');
+
+/**  Create a new Reader of the type defined in $inputFileType  **/
+$reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader($inputFileType);
+/**  Enable loading numeric values formatted with German , decimal separator and . thousands separator  **/
+$reader->castFormattedNumberToNumeric(true);
+
+/**  Load the file to a Spreadsheet Object  **/
+$spreadsheet = $reader->load($inputFileName);
+```
+This will attempt to load those formatted numeric values as numbers, based on the server's locale settings.
+
+If you want to load those values as numbers, but also to retain the formatting as a number format mask, then you can pass a boolean `true` as a second argument to the `castFormattedNumberToNumeric()` method to tell the Reader to identify the format masking to use for that value. This option does have an arbitrary limit of 6 decimal places.
+
+If your Csv file includes other formats for numbers (currencies, scientific format, etc); then you should probably also use the Advanced Value Binder to handle these cases.  
+
+Applies to:
+
+Reader    | Y/N |Reader  | Y/N |Reader        | Y/N |
+----------|:---:|--------|:---:|--------------|:---:|
+Xlsx      | NO  | Xls    | NO  | Xml          | NO  |
+Ods       | NO  | SYLK   | NO  | Gnumeric     | NO  |
+CSV       | YES | HTML   | NO
+
+### ODS Text and Number-Format Limits
+
+The ODS reader limits spaces generated by `<text:s>` to 32,767 per cell or annotation. The budget is shared across space runs, nested spans, and paragraphs, and starts again for each cell or annotation. Invalid counts or excessive expansion throw a `\PhpOffice\PhpSpreadsheet\Reader\Exception` before the repeated spaces are allocated.
+
+Complete cell and annotation text is also truncated to Excel's limit of 32,767 characters while being read. Literal text, Unicode characters, expanded spaces, and line breaks all count toward this text limit. The reader continues validating space counts after the text limit has been reached.
+
+The ODS reader limits zeros generated from `number:min-integer-digits` to 100, rejecting invalid or excessive counts before allocating the number-format mask. This limit applies when `number:decimal-places="0"`; it does not limit every kind of number-format code. `readDataOnly=true` skips number-style processing.
+
+These limits are fixed and cannot be configured by the application.
+
+The reader also validates array-formula matrix spans against the remaining worksheet rows and columns, and computes the end column directly. Invalid spans throw a reader exception before constructing the formula range.
+
+## A Brief Word about the Advanced Value Binder
 
 When loading data from a file that contains no formatting information,
 such as a CSV file, then data is read either as strings or numbers
@@ -586,14 +787,18 @@ So using a Value Binder allows a great deal more flexibility in the
 loader logic when reading unformatted text files.
 
 ```php
-/**  Tell PhpSpreadsheet that we want to use the Advanced Value Binder  **/
-\PhpOffice\PhpSpreadsheet\Cell\Cell::setValueBinder( new \PhpOffice\PhpSpreadsheet\Cell\AdvancedValueBinder() );
-
 $inputFileType = 'Csv';
 $inputFileName = './sampleData/example1.tsv';
 
 $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader($inputFileType);
 $reader->setDelimiter("\t");
+
+/**  Tell PhpSpreadsheet that we want to use the Advanced Value Binder  **/
+// Old method using static property
+\PhpOffice\PhpSpreadsheet\Cell\Cell::setValueBinder( new \PhpOffice\PhpSpreadsheet\Cell\AdvancedValueBinder() );
+// Preferred method using dynamic property since 3.4.0
+$reader::setValueBinder( new \PhpOffice\PhpSpreadsheet\Cell\AdvancedValueBinder() );
+
 $spreadsheet = $reader->load($inputFileName);
 ```
 
@@ -604,9 +809,12 @@ Loading using a Value Binder applies to:
 
 Reader    | Y/N |Reader  | Y/N |Reader        | Y/N
 ----------|:---:|--------|:---:|--------------|:---:
-Xlsx      | NO  | Xls    | NO  | Xml | NO
-Ods       | NO  | SYLK   | NO  | Gnumeric     | NO
+Xlsx      | NO  | Xls    | NO  | Xml          | NO
+Ods       | NO  | SYLK   | YES | Gnumeric     | NO
 CSV       | YES | HTML   | YES
+
+Note that you can also use the Binder to determine how PhpSpreadsheet identified datatypes for values when you set a cell value without explicitly setting a datatype.
+Value Binders can also be used to set formatting for a cell appropriate to the value.
 
 ## Error Handling
 
@@ -665,7 +873,7 @@ for a working example of this code.
 ### listWorksheetInfo
 
 The `listWorksheetInfo()` method returns a nested array, with each entry
-listing the name and dimensions for a worksheet:
+listing the name, dimensions and state for a worksheet:
 
 ```php
 $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader($inputFileType);
@@ -679,7 +887,8 @@ foreach ($worksheetData as $worksheet) {
     echo 'Rows: ', $worksheet['totalRows'],
          ' Columns: ', $worksheet['totalColumns'], '<br />';
     echo 'Cell Range: A1:',
-    $worksheet['lastColumnLetter'], $worksheet['totalRows'];
+         $worksheet['lastColumnLetter'], $worksheet['totalRows'], '<br />';
+    echo 'Sheet state: ', $worksheet['sheetState'];
     echo '</li>';
 }
 echo '</ol>';

@@ -1,6 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 // nominal_rate, npery, Result
+
+use PhpOffice\PhpSpreadsheet\Calculation\Information\ExcelError;
 
 return [
     [
@@ -24,8 +28,23 @@ return [
         2,
     ],
     [
-        '#NUM!',
+        ExcelError::NAN(),
+        0.025,
+        -1,
+    ],
+    [
+        ExcelError::NAN(),
+        -0.025,
         1,
-        0,
+    ],
+    [
+        ExcelError::VALUE(),
+        0.025,
+        'NaN',
+    ],
+    [
+        ExcelError::VALUE(),
+        'NaN',
+        1,
     ],
 ];

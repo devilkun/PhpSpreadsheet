@@ -1,8 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 return [
-    // Must be C
-    [
+    'match value1 A result is C' => [
         'C',
         'A',
         'A',
@@ -11,8 +12,7 @@ return [
         'D',
         '??',
     ],
-    // Must be Female
-    [
+    'match value2 2 result is female' => [
         'Female',
         2,
         '1',
@@ -20,8 +20,7 @@ return [
         '2',
         'Female',
     ],
-    // Must be X using default
-    [
+    'defined default value' => [
         'X',
         'U',
         'ABC',
@@ -30,8 +29,7 @@ return [
         'Z',
         'X',
     ],
-    // Must be N/A default value not defined
-    [
+    'undefined default value' => [
         '#N/A',
         'U',
         'ABC',
@@ -39,8 +37,5 @@ return [
         'DEF',
         'Z',
     ],
-    // Must be value - no parameter
-    [
-        '#VALUE!',
-    ],
+    'no arguments' => ['exception'],
 ];

@@ -1,31 +1,54 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\MathTrig;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
-use PhpOffice\PhpSpreadsheet\Calculation\MathTrig;
-use PHPUnit\Framework\TestCase;
+use PhpOffice\PhpSpreadsheet\Calculation\Calculation;
 
-class QuotientTest extends TestCase
+class QuotientTest extends AllSetupTeardown
 {
-    protected function setUp(): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerQUOTIENT')]
+    public function testQUOTIENT(mixed $expectedResult, mixed $arg1 = 'omitted', mixed $arg2 = 'omitted'): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
+        $this->mightHaveException($expectedResult);
+        $sheet = $this->getSheet();
+        if ($arg1 !== null) {
+            $sheet->getCell('A1')->setValue($arg1);
+        }
+        if ($arg2 !== null) {
+            $sheet->getCell('A2')->setValue($arg2);
+        }
+        if ($arg1 === 'omitted') {
+            $sheet->getCell('B1')->setValue('=QUOTIENT()');
+        } elseif ($arg2 === 'omitted') {
+            $sheet->getCell('B1')->setValue('=QUOTIENT(A1)');
+        } else {
+            $sheet->getCell('B1')->setValue('=QUOTIENT(A1, A2)');
+        }
+        $result = $sheet->getCell('B1')->getCalculatedValue();
+        self::assertSame($expectedResult, $result);
     }
 
-    /**
-     * @dataProvider providerQUOTIENT
-     *
-     * @param mixed $expectedResult
-     */
-    public function testQUOTIENT($expectedResult, ...$args): void
-    {
-        $result = MathTrig::QUOTIENT(...$args);
-        self::assertEqualsWithDelta($expectedResult, $result, 1E-12);
-    }
-
-    public function providerQUOTIENT()
+    public static function providerQUOTIENT(): array
     {
         return require 'tests/data/Calculation/MathTrig/QUOTIENT.php';
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerQuotientArray')]
+    public function testQuotientArray(array $expectedResult, string $argument1, string $argument2): void
+    {
+        $calculation = Calculation::getInstance();
+
+        $formula = "=QUOTIENT({$argument1}, {$argument2})";
+        $result = $calculation->calculateFormula($formula);
+        self::assertEqualsWithDelta($expectedResult, $result, 1.0e-14);
+    }
+
+    public static function providerQuotientArray(): array
+    {
+        return [
+            'matrix' => [[[3, 3, 2], [2, 2, 1], [1, 0, 0]], '{9, 8, 7; 6, 5, 4; 3, 2, 1}', '2.5'],
+        ];
     }
 }

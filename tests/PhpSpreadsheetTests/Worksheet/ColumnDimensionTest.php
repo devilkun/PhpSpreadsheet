@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Worksheet;
 
+use PhpOffice\PhpSpreadsheet\Helper\Dimension;
 use PhpOffice\PhpSpreadsheet\Worksheet\ColumnDimension;
 use PHPUnit\Framework\TestCase;
 
@@ -11,7 +14,6 @@ class ColumnDimensionTest extends TestCase
     {
         $expected = 'A';
         $columnDimension = new ColumnDimension();
-        self::assertInstanceOf(ColumnDimension::class, $columnDimension);
         $result = $columnDimension->getColumnIndex();
         self::assertEquals($expected, $result);
     }
@@ -29,9 +31,18 @@ class ColumnDimensionTest extends TestCase
     {
         $expected = 1.2;
         $columnDimension = new ColumnDimension();
+
         $columnDimension->setWidth($expected);
         $result = $columnDimension->getWidth();
         self::assertSame($expected, $result);
+
+        $expectedPx = 32.0;
+        $expectedPt = 24.0;
+        $columnDimension->setWidth($expectedPx, Dimension::UOM_PIXELS);
+        $resultPx = $columnDimension->getWidth(Dimension::UOM_PIXELS);
+        self::assertSame($expectedPx, $resultPx);
+        $resultPt = $columnDimension->getWidth(Dimension::UOM_POINTS);
+        self::assertSame($expectedPt, $resultPt);
     }
 
     public function testGetAndSetAutoSize(): void
@@ -40,6 +51,6 @@ class ColumnDimensionTest extends TestCase
         $columnDimension = new ColumnDimension();
         $columnDimension->setAutoSize($expected);
         $result = $columnDimension->getAutoSize();
-        self::assertSame($expected, $result);
+        self::assertTrue($result);
     }
 }

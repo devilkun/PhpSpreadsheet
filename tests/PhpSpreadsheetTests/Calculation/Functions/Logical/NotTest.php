@@ -1,31 +1,42 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\Logical;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
-use PhpOffice\PhpSpreadsheet\Calculation\Logical;
-use PHPUnit\Framework\TestCase;
+use PhpOffice\PhpSpreadsheet\Calculation\Calculation;
+use PHPUnit\Framework\Attributes\DataProvider;
 
-class NotTest extends TestCase
+class NotTest extends AllSetupTeardown
 {
-    protected function setUp(): void
+    #[DataProvider('providerNOT')]
+    public function testNOT(mixed $expectedResult, mixed ...$args): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
+        $this->runTestCase('NOT', $expectedResult, ...$args);
     }
 
-    /**
-     * @dataProvider providerNOT
-     *
-     * @param mixed $expectedResult
-     */
-    public function testNOT($expectedResult, ...$args): void
-    {
-        $result = Logical::NOT(...$args);
-        self::assertEquals($expectedResult, $result);
-    }
-
-    public function providerNOT()
+    public static function providerNOT(): array
     {
         return require 'tests/data/Calculation/Logical/NOT.php';
+    }
+
+    #[DataProvider('providerNotArray')]
+    public function testNotArray(array $expectedResult, string $argument1): void
+    {
+        $calculation = Calculation::getInstance();
+
+        $formula = "=NOT({$argument1})";
+        $result = $calculation->calculateFormula($formula);
+        self::assertSame($expectedResult, $result);
+    }
+
+    public static function providerNotArray(): array
+    {
+        return [
+            'vector' => [
+                [[false, true, true, false]],
+                '{TRUE, FALSE, FALSE, TRUE}',
+            ],
+        ];
     }
 }

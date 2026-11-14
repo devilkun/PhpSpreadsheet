@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     [
         [
@@ -87,6 +89,28 @@ return [
         ],
         [
             [5],
+            [6],
+        ],
+    ],
+    [
+        '#VALUE!', // null in first array
+        [
+            [1, 2],
+            [null, 4],
+        ],
+        [
+            [5],
+            [6],
+        ],
+    ],
+    [
+        '#VALUE!', // string in second array
+        [
+            [1, 2],
+            [3, 4],
+        ],
+        [
+            ['5'],
             [6],
         ],
     ],

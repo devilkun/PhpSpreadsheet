@@ -1,49 +1,124 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\Engineering;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Engineering;
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
+use PhpOffice\PhpSpreadsheet\Calculation\Calculation;
+use PhpOffice\PhpSpreadsheet\Calculation\Engineering\ComplexFunctions;
+use PhpOffice\PhpSpreadsheet\Calculation\Exception as CalculationException;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheetTests\Calculation\Functions\FormulaArguments;
 use PhpOffice\PhpSpreadsheetTests\Custom\ComplexAssert;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
-class ImCscTest extends TestCase
+class ImCscTest extends ComplexAssert
 {
-    const COMPLEX_PRECISION = 1E-8;
-
-    /**
-     * @var ComplexAssert
-     */
-    protected $complexAssert;
-
-    protected function setUp(): void
+    #[DataProvider('providerIMCSC')]
+    public function testDirectCallToIMCSC(float|string $expectedResult, string $arg): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
-        $this->complexAssert = new ComplexAssert();
+        $result = ComplexFunctions::IMCSC($arg);
+        $this->assertComplexEquals($expectedResult, $result);
     }
 
-    protected function tearDown(): void
+    #[DataProvider('providerIMCSC')]
+    public function testIMCSCAsFormula(mixed $expectedResult, mixed ...$args): void
     {
-        $this->complexAssert = null;
+        $arguments = new FormulaArguments(...$args);
+
+        $calculation = Calculation::getInstance();
+        $formula = "=IMCSC({$arguments})";
+
+        /** @var float|int|string */
+        $result = $calculation->calculateFormula($formula);
+        $this->assertComplexEquals($expectedResult, $result);
     }
 
-    /**
-     * @dataProvider providerIMCSC
-     *
-     * @param mixed $expectedResult
-     * @param mixed $value
-     */
-    public function testIMCSC($expectedResult, $value): void
+    #[DataProvider('providerIMCSC')]
+    public function testIMCSCInWorksheet(mixed $expectedResult, mixed ...$args): void
     {
-        $result = Engineering::IMCSC($value);
-        self::assertTrue(
-            $this->complexAssert->assertComplexEquals($expectedResult, $result, self::COMPLEX_PRECISION),
-            $this->complexAssert->getErrorMessage()
-        );
+        $arguments = new FormulaArguments(...$args);
+
+        $spreadsheet = new Spreadsheet();
+        $worksheet = $spreadsheet->getActiveSheet();
+        $argumentCells = $arguments->populateWorksheet($worksheet);
+        $formula = "=IMCSC({$argumentCells})";
+
+        $result = $worksheet->setCellValue('A1', $formula)
+            ->getCell('A1')
+            ->getCalculatedValue();
+        $this->assertComplexEquals($expectedResult, $result);
+
+        $spreadsheet->disconnectWorksheets();
     }
 
-    public function providerIMCSC()
+    public static function providerIMCSC(): array
     {
         return require 'tests/data/Calculation/Engineering/IMCSC.php';
+    }
+
+    #[DataProvider('providerUnhappyIMCSC')]
+    public function testIMCSCUnhappyPath(string $expectedException, mixed ...$args): void
+    {
+        $arguments = new FormulaArguments(...$args);
+
+        $spreadsheet = new Spreadsheet();
+        $worksheet = $spreadsheet->getActiveSheet();
+        $argumentCells = $arguments->populateWorksheet($worksheet);
+        $formula = "=IMCSC({$argumentCells})";
+
+        $this->expectException(CalculationException::class);
+        $this->expectExceptionMessage($expectedException);
+        $worksheet->setCellValue('A1', $formula)
+            ->getCell('A1')
+            ->getCalculatedValue();
+
+        $spreadsheet->disconnectWorksheets();
+    }
+
+    public static function providerUnhappyIMCSC(): array
+    {
+        return [
+            ['Formula Error: Wrong number of arguments for IMCSC() function'],
+        ];
+    }
+
+    /** @param string[][] $expectedResult */
+    #[DataProvider('providerImCscArray')]
+    public function testImCscArray(array $expectedResult, string $complex): void
+    {
+        $calculation = Calculation::getInstance();
+
+        $formula = "=IMCSC({$complex})";
+        /** @var array<string, array<string, string>> */
+        $result = $calculation->calculateFormula($formula);
+        // Avoid testing for excess precision
+        foreach ($expectedResult as &$array) {
+            foreach ($array as &$string) {
+                $string = preg_replace('/(\d{8})\d+/', '$1', $string);
+            }
+        }
+        foreach ($result as &$array2) {
+            foreach ($array2 as &$string2) {
+                $string2 = preg_replace('/(\d{8})\d+/', '$1', $string2);
+            }
+        }
+
+        self::assertEquals($expectedResult, $result);
+    }
+
+    public static function providerImCscArray(): array
+    {
+        return [
+            'row/column vector' => [
+                [
+                    ['-0.13829327777622+0.087608481088326i', '0.1652836698551i', '0.13829327777622+0.087608481088326i'],
+                    ['-0.62151801717043+0.30393100162843i', '0.85091812823932i', '0.62151801717043+0.30393100162843i'],
+                    ['-0.62151801717043-0.30393100162843i', '-0.85091812823932i', '0.62151801717043-0.30393100162843i'],
+                    ['-0.13829327777622-0.087608481088326i', '-0.1652836698551i', '0.13829327777622-0.087608481088326i'],
+                ],
+                '{"-1-2.5i", "-2.5i", "1-2.5i"; "-1-i", "-i", "1-i"; "-1+i", "i", "1+1"; "-1+2.5i", "+2.5i", "1+2.5i"}',
+            ],
+        ];
     }
 }

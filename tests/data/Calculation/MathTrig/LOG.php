@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 // number, base, result
 
 return [
@@ -341,4 +343,5 @@ return [
         200,
         3,
     ],
+    ['exception'],
 ];

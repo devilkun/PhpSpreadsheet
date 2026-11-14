@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 // Result, Settlement, Maturity, Rate, Yield, Redemption, Frequency, Basis
 
 return [
@@ -191,6 +193,16 @@ return [
         100,
         4,
         0,
+    ],
+    [
+        110.9216934,
+        '01-Apr-2012',
+        '31-Mar-2020',
+        0.12,
+        0.10,
+        100,
+        4,
+        null,
     ],
     [
         110.9217251,

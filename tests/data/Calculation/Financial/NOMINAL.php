@@ -1,6 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 // effect_rate, npery, result
+
+use PhpOffice\PhpSpreadsheet\Calculation\Information\ExcelError;
 
 return [
     [
@@ -24,8 +28,23 @@ return [
         12,
     ],
     [
-        '#NUM!',
-        -0.025000000000000001,
+        ExcelError::NAN(),
+        -0.025,
         12,
+    ],
+    [
+        ExcelError::NAN(),
+        0.025,
+        -12,
+    ],
+    [
+        ExcelError::VALUE(),
+        'NaN',
+        12,
+    ],
+    [
+        ExcelError::VALUE(),
+        0.025,
+        'NaN',
     ],
 ];

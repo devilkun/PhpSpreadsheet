@@ -1,35 +1,104 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\DateTime;
 
-use PhpOffice\PhpSpreadsheet\Calculation\DateTime;
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
-use PhpOffice\PhpSpreadsheet\Shared\Date;
+use PhpOffice\PhpSpreadsheet\Calculation\Calculation;
+use PhpOffice\PhpSpreadsheet\Calculation\DateTimeExcel\TimeParts;
+use PhpOffice\PhpSpreadsheet\Calculation\Exception as CalculationException;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheetTests\Calculation\Functions\FormulaArguments;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class MinuteTest extends TestCase
 {
-    protected function setUp(): void
+    #[DataProvider('providerMINUTE')]
+    public function testDirectCallToMINUTE(mixed $expectedResult, mixed ...$args): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
-        Functions::setReturnDateType(Functions::RETURNDATE_EXCEL);
-        Date::setExcelCalendar(Date::CALENDAR_WINDOWS_1900);
+        $result = TimeParts::MINUTE(...$args);
+        self::assertSame($expectedResult, $result);
     }
 
-    /**
-     * @dataProvider providerMINUTE
-     *
-     * @param mixed $expectedResult
-     * @param $dateTimeValue
-     */
-    public function testMINUTE($expectedResult, $dateTimeValue): void
+    #[DataProvider('providerMINUTE')]
+    public function testMINUTEAsFormula(mixed $expectedResult, mixed ...$args): void
     {
-        $result = DateTime::MINUTE($dateTimeValue);
-        self::assertEqualsWithDelta($expectedResult, $result, 1E-8);
+        $arguments = new FormulaArguments(...$args);
+
+        $calculation = Calculation::getInstance();
+        $formula = "=MINUTE({$arguments})";
+
+        $result = $calculation->calculateFormula($formula);
+        self::assertSame($expectedResult, $result);
     }
 
-    public function providerMINUTE()
+    #[DataProvider('providerMINUTE')]
+    public function testMINUTEInWorksheet(mixed $expectedResult, mixed ...$args): void
+    {
+        $arguments = new FormulaArguments(...$args);
+
+        $spreadsheet = new Spreadsheet();
+        $worksheet = $spreadsheet->getActiveSheet();
+        $argumentCells = $arguments->populateWorksheet($worksheet);
+        $formula = "=MINUTE({$argumentCells})";
+
+        $result = $worksheet->setCellValue('A1', $formula)
+            ->getCell('A1')
+            ->getCalculatedValue();
+        self::assertSame($expectedResult, $result);
+
+        $spreadsheet->disconnectWorksheets();
+    }
+
+    public static function providerMINUTE(): array
     {
         return require 'tests/data/Calculation/DateTime/MINUTE.php';
+    }
+
+    #[DataProvider('providerUnhappyMINUTE')]
+    public function testMINUTEUnhappyPath(string $expectedException, mixed ...$args): void
+    {
+        $arguments = new FormulaArguments(...$args);
+
+        $spreadsheet = new Spreadsheet();
+        $worksheet = $spreadsheet->getActiveSheet();
+        $argumentCells = $arguments->populateWorksheet($worksheet);
+        $formula = "=MINUTE({$argumentCells})";
+
+        $this->expectException(CalculationException::class);
+        $this->expectExceptionMessage($expectedException);
+        $worksheet->setCellValue('A1', $formula)
+            ->getCell('A1')
+            ->getCalculatedValue();
+
+        $spreadsheet->disconnectWorksheets();
+    }
+
+    public static function providerUnhappyMINUTE(): array
+    {
+        return [
+            ['Formula Error: Wrong number of arguments for MINUTE() function'],
+        ];
+    }
+
+    /** @param mixed[] $expectedResult */
+    #[DataProvider('providerMinuteArray')]
+    public function testMinuteArray(array $expectedResult, string $array): void
+    {
+        $calculation = Calculation::getInstance();
+
+        $formula = "=MINUTE({$array})";
+        $result = $calculation->calculateFormula($formula);
+        self::assertEqualsWithDelta($expectedResult, $result, 1.0e-14);
+    }
+
+    public static function providerMinuteArray(): array
+    {
+        return [
+            'row vector' => [[[2, 14, 20]], '{"2022-02-09 01:02:03", "2022-02-09 13:14:15", "2022-02-09 19:20:21"}'],
+            'column vector' => [[[2], [14], [20]], '{"2022-02-09 01:02:03"; "2022-02-09 13:14:15"; "2022-02-09 19:20:21"}'],
+            'matrix' => [[[2, 14], [20, 59]], '{"2022-02-09 01:02:03", "2022-02-09 13:14:15"; "2022-02-09 19:20:21", "1999-12-31 23:59:59"}'],
+        ];
     }
 }

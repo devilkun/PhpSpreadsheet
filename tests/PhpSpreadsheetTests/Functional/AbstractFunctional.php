@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Functional;
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -14,23 +16,26 @@ abstract class AbstractFunctional extends TestCase
 {
     /**
      * Write spreadsheet to disk, reload and return it.
-     *
-     * @param string $format
-     *
-     * @return Spreadsheet
      */
-    protected function writeAndReload(Spreadsheet $spreadsheet, $format, ?callable $readerCustomizer = null)
+    protected function writeAndReload(Spreadsheet $spreadsheet, string $format, ?callable $readerCustomizer = null, ?callable $writerCustomizer = null): Spreadsheet
     {
-        $filename = tempnam(File::sysGetTempDir(), 'phpspreadsheet-test');
-        $writer = IOFactory::createWriter($spreadsheet, $format);
-        $writer->save($filename);
+        $filename = File::temporaryFilename();
 
-        $reader = IOFactory::createReader($format);
-        if ($readerCustomizer) {
-            $readerCustomizer($reader);
+        try {
+            $writer = IOFactory::createWriter($spreadsheet, $format);
+            if ($writerCustomizer) {
+                $writerCustomizer($writer);
+            }
+            $writer->save($filename);
+
+            $reader = IOFactory::createReader($format);
+            if ($readerCustomizer) {
+                $readerCustomizer($reader);
+            }
+            $reloadedSpreadsheet = $reader->load($filename);
+        } finally {
+            @unlink($filename);
         }
-        $reloadedSpreadsheet = $reader->load($filename);
-        unlink($filename);
 
         return $reloadedSpreadsheet;
     }

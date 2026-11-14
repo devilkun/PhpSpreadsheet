@@ -1,30 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\Statistical;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
-use PhpOffice\PhpSpreadsheet\Calculation\Statistical;
-use PHPUnit\Framework\TestCase;
-
-class AveDevTest extends TestCase
+class AveDevTest extends AllSetupTeardown
 {
-    protected function setUp(): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerAVEDEV')]
+    public function testAVEDEV(mixed $expectedResult, mixed ...$args): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
+        $this->runTestCases('AVEDEV', $expectedResult, ...$args);
     }
 
-    /**
-     * @dataProvider providerAVEDEV
-     *
-     * @param mixed $expectedResult
-     */
-    public function testAVEDEV($expectedResult, ...$args): void
-    {
-        $result = Statistical::AVEDEV(...$args);
-        self::assertEqualsWithDelta($expectedResult, $result, 1E-12);
-    }
-
-    public function providerAVEDEV()
+    public static function providerAVEDEV(): array
     {
         return require 'tests/data/Calculation/Statistical/AVEDEV.php';
     }

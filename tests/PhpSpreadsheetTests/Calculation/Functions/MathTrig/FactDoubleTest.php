@@ -1,32 +1,45 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\MathTrig;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
-use PhpOffice\PhpSpreadsheet\Calculation\MathTrig;
-use PHPUnit\Framework\TestCase;
+use PhpOffice\PhpSpreadsheet\Calculation\Calculation;
 
-class FactDoubleTest extends TestCase
+class FactDoubleTest extends AllSetupTeardown
 {
-    protected function setUp(): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerFACTDOUBLE')]
+    public function testFACTDOUBLE(mixed $expectedResult, mixed $value): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
+        $this->mightHaveException($expectedResult);
+        $sheet = $this->getSheet();
+        $sheet->getCell('A1')->setValue($value);
+        $sheet->getCell('B1')->setValue('=FACTDOUBLE(A1)');
+        $result = $sheet->getCell('B1')->getCalculatedValue();
+        self::assertEquals($expectedResult, $result);
     }
 
-    /**
-     * @dataProvider providerFACTDOUBLE
-     *
-     * @param mixed $expectedResult
-     * @param $value
-     */
-    public function testFACTDOUBLE($expectedResult, $value): void
-    {
-        $result = MathTrig::FACTDOUBLE($value);
-        self::assertEqualsWithDelta($expectedResult, $result, 1E-12);
-    }
-
-    public function providerFACTDOUBLE()
+    public static function providerFACTDOUBLE(): array
     {
         return require 'tests/data/Calculation/MathTrig/FACTDOUBLE.php';
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerFactDoubleArray')]
+    public function testFactDoubleArray(array $expectedResult, string $array): void
+    {
+        $calculation = Calculation::getInstance();
+
+        $formula = "=FACTDOUBLE({$array})";
+        $result = $calculation->calculateFormula($formula);
+        self::assertEqualsWithDelta($expectedResult, $result, 1.0e-14);
+    }
+
+    public static function providerFactDoubleArray(): array
+    {
+        return [
+            'row vector' => [[['#NUM!', 48, 945]], '{-2, 6, 9}'],
+            'column vector' => [[['#NUM!'], [48], [945]], '{-2; 6; 9}'],
+            'matrix' => [[['#NUM!', 48], [945, 3]], '{-2, 6; 9, 3.5}'],
+        ];
     }
 }

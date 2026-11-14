@@ -1,90 +1,61 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\Statistical;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
-use PhpOffice\PhpSpreadsheet\Calculation\Statistical;
-use PHPUnit\Framework\TestCase;
-
-class CountTest extends TestCase
+class CountTest extends AllSetupTeardown
 {
-    private $compatibilityMode;
-
-    protected function setUp(): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerBasicCOUNT')]
+    public function testBasicCOUNT(mixed $expectedResult, mixed ...$args): void
     {
-        $this->compatibilityMode = Functions::getCompatibilityMode();
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
+        $this->runTestCaseNoBracket('COUNT', $expectedResult, ...$args);
     }
 
-    protected function tearDown(): void
-    {
-        Functions::setCompatibilityMode($this->compatibilityMode);
-    }
-
-    /**
-     * @dataProvider providerBasicCOUNT
-     *
-     * @param mixed $expectedResult
-     */
-    public function testBasicCOUNT($expectedResult, ...$args): void
-    {
-        $result = Statistical::COUNT(...$args);
-        self::assertEqualsWithDelta($expectedResult, $result, 1E-12);
-    }
-
-    public function providerBasicCOUNT()
+    public static function providerBasicCOUNT(): array
     {
         return require 'tests/data/Calculation/Statistical/BasicCOUNT.php';
     }
 
-    /**
-     * @dataProvider providerExcelCOUNT
-     *
-     * @param mixed $expectedResult
-     */
-    public function testExcelCOUNT($expectedResult, ...$args): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerExcelCOUNT')]
+    public function testExcelCOUNT(mixed $expectedResult, mixed ...$args): void
     {
-        $result = Statistical::COUNT(...$args);
-        self::assertEqualsWithDelta($expectedResult, $result, 1E-12);
+        if (is_array($args[0])) {
+            $this->runTestCaseNoBracket('COUNT', $expectedResult, ...$args);
+        } else {
+            $this->runTestCaseDirect('COUNT', $expectedResult, ...$args);
+        }
     }
 
-    public function providerExcelCOUNT()
+    public static function providerExcelCOUNT(): array
     {
         return require 'tests/data/Calculation/Statistical/ExcelCOUNT.php';
     }
 
-    /**
-     * @dataProvider providerOpenOfficeCOUNT
-     *
-     * @param mixed $expectedResult
-     */
-    public function testOpenOfficeCOUNT($expectedResult, ...$args): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerOpenOfficeCOUNT')]
+    public function testOpenOfficeCOUNT(mixed $expectedResult, mixed ...$args): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_OPENOFFICE);
-
-        $result = Statistical::COUNT(...$args);
-        self::assertEqualsWithDelta($expectedResult, $result, 1E-12);
+        $this->setOpenOffice();
+        if (is_array($args[0])) {
+            $this->runTestCaseNoBracket('COUNT', $expectedResult, ...$args);
+        } else {
+            $this->runTestCaseDirect('COUNT', $expectedResult, ...$args);
+        }
     }
 
-    public function providerOpenOfficeCOUNT()
+    public static function providerOpenOfficeCOUNT(): array
     {
         return require 'tests/data/Calculation/Statistical/OpenOfficeCOUNT.php';
     }
 
-    /**
-     * @dataProvider providerGnumericCOUNT
-     *
-     * @param mixed $expectedResult
-     */
-    public function testGnumericCOUNT($expectedResult, ...$args): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerGnumericCOUNT')]
+    public function testGnumericCOUNT(mixed $expectedResult, mixed ...$args): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_GNUMERIC);
-
-        $result = Statistical::COUNT(...$args);
-        self::assertEqualsWithDelta($expectedResult, $result, 1E-12);
+        $this->setGnumeric();
+        $this->runTestCaseNoBracket('COUNT', $expectedResult, ...$args);
     }
 
-    public function providerGnumericCOUNT()
+    public static function providerGnumericCOUNT(): array
     {
         return require 'tests/data/Calculation/Statistical/GnumericCOUNT.php';
     }

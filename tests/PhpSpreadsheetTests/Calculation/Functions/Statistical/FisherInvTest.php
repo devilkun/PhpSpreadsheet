@@ -1,32 +1,41 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\Statistical;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
-use PhpOffice\PhpSpreadsheet\Calculation\Statistical;
-use PHPUnit\Framework\TestCase;
+use PhpOffice\PhpSpreadsheet\Calculation\Calculation;
 
-class FisherInvTest extends TestCase
+class FisherInvTest extends AllSetupTeardown
 {
-    protected function setUp(): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerFISHERINV')]
+    public function testFISHERINV(mixed $expectedResult, mixed ...$args): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
+        $this->runTestCases('FISHERINV', $expectedResult, ...$args);
     }
 
-    /**
-     * @dataProvider providerFISHERINV
-     *
-     * @param mixed $expectedResult
-     * @param $value
-     */
-    public function testFISHERINV($expectedResult, $value): void
-    {
-        $result = Statistical::FISHERINV($value);
-        self::assertEqualsWithDelta($expectedResult, $result, 1E-12);
-    }
-
-    public function providerFISHERINV()
+    public static function providerFISHERINV(): array
     {
         return require 'tests/data/Calculation/Statistical/FISHERINV.php';
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerFisherArray')]
+    public function testFisherArray(array $expectedResult, string $values): void
+    {
+        $calculation = Calculation::getInstance();
+
+        $formula = "=FISHERINV({$values})";
+        $result = $calculation->calculateFormula($formula);
+        self::assertEqualsWithDelta($expectedResult, $result, 1.0e-14);
+    }
+
+    public static function providerFisherArray(): array
+    {
+        return [
+            'row vector' => [
+                [[-0.7162978701990245, 0.197375320224904, 0.6351489523872873, 0.9051482536448664]],
+                '{-0.9, 0.2, 0.75, 1.5}',
+            ],
+        ];
     }
 }

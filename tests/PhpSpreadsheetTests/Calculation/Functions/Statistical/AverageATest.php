@@ -1,30 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\Statistical;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
-use PhpOffice\PhpSpreadsheet\Calculation\Statistical;
-use PHPUnit\Framework\TestCase;
-
-class AverageATest extends TestCase
+class AverageATest extends AllSetupTeardown
 {
-    protected function setUp(): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerAVERAGEA')]
+    public function testAVERAGEA(mixed $expectedResult, mixed ...$args): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
+        $this->runTestCases('AVERAGEA', $expectedResult, ...$args);
     }
 
-    /**
-     * @dataProvider providerAVERAGEA
-     *
-     * @param mixed $expectedResult
-     */
-    public function testAVERAGEA($expectedResult, ...$args): void
-    {
-        $result = Statistical::AVERAGEA(...$args);
-        self::assertEqualsWithDelta($expectedResult, $result, 1E-12);
-    }
-
-    public function providerAVERAGEA()
+    public static function providerAVERAGEA(): array
     {
         return require 'tests/data/Calculation/Statistical/AVERAGEA.php';
     }

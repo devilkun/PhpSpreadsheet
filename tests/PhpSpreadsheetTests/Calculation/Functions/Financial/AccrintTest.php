@@ -1,30 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\Financial;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Financial;
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
-use PHPUnit\Framework\TestCase;
-
-class AccrintTest extends TestCase
+class AccrintTest extends AllSetupTeardown
 {
-    protected function setUp(): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerACCRINT')]
+    public function testACCRINT(mixed $expectedResult, mixed ...$args): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
+        $this->runTestCase('ACCRINT', $expectedResult, $args);
     }
 
-    /**
-     * @dataProvider providerACCRINT
-     *
-     * @param mixed $expectedResult
-     */
-    public function testACCRINT($expectedResult, ...$args): void
-    {
-        $result = Financial::ACCRINT(...$args);
-        self::assertEqualsWithDelta($expectedResult, $result, 1E-8);
-    }
-
-    public function providerACCRINT()
+    public static function providerACCRINT(): array
     {
         return require 'tests/data/Calculation/Financial/ACCRINT.php';
     }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 return [
@@ -64,5 +66,15 @@ return [
             4,
             4,
         ],
+    ],
+    [
+        '#N/A',
+        [1, 2, 3],
+        [4, 5],
+    ],
+    [
+        '#DIV/0!',
+        [1, 2, 3],
+        [4, null, null],
     ],
 ];

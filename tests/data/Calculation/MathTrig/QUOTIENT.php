@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     [
         2,
@@ -31,4 +33,12 @@ return [
         -7,
         2,
     ],
+    ['#VALUE!', 'X', 5],
+    ['#VALUE!', 5, 'X'],
+    ['#DIV/0!', 5, 0],
+    ['#DIV/0!', 5, null],
+    ['#DIV/0!', 0, 0],
+    [0, 0, 5],
+    ['exception'],
+    ['exception', 1],
 ];

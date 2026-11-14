@@ -1,30 +1,28 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests;
 
-use InvalidArgumentException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Reader;
+use PhpOffice\PhpSpreadsheet\Reader\Exception as ReaderException;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class IOFactoryTest extends TestCase
 {
-    /**
-     * @dataProvider providerCreateWriter
-     *
-     * @param string $name
-     * @param string $expected
-     */
-    public function testCreateWriter($name, $expected): void
+    #[DataProvider('providerCreateWriter')]
+    public function testCreateWriter(string $name, string $expected): void
     {
         $spreadsheet = new Spreadsheet();
         $actual = IOFactory::createWriter($spreadsheet, $name);
-        self::assertInstanceOf($expected, $actual);
+        self::assertSame($expected, $actual::class);
     }
 
-    public function providerCreateWriter()
+    public static function providerCreateWriter(): array
     {
         return [
             ['Xls', Writer\Xls::class],
@@ -46,19 +44,14 @@ class IOFactoryTest extends TestCase
         self::assertInstanceOf(Writer\Pdf\Mpdf::class, $actual);
     }
 
-    /**
-     * @dataProvider providerCreateReader
-     *
-     * @param string $name
-     * @param string $expected
-     */
-    public function testCreateReader($name, $expected): void
+    #[DataProvider('providerCreateReader')]
+    public function testCreateReader(string $name, string $expected): void
     {
         $actual = IOFactory::createReader($name);
-        self::assertInstanceOf($expected, $actual);
+        self::assertSame($expected, $actual::class);
     }
 
-    public function providerCreateReader()
+    public static function providerCreateReader(): array
     {
         return [
             ['Xls', Reader\Xls::class],
@@ -79,50 +72,22 @@ class IOFactoryTest extends TestCase
         self::assertInstanceOf(Reader\Html::class, $actual);
     }
 
-    /**
-     * @dataProvider providerIdentify
-     *
-     * @param string $file
-     * @param string $expectedName
-     * @param string $expectedClass
-     */
-    public function testIdentify($file, $expectedName, $expectedClass): void
+    #[DataProvider('providerIdentify')]
+    public function testIdentifyCreateLoad(string $file, string $expectedName, string $expectedClass): void
     {
         $actual = IOFactory::identify($file);
         self::assertSame($expectedName, $actual);
-    }
-
-    /**
-     * @dataProvider providerIdentify
-     *
-     * @param string $file
-     * @param string $expectedName
-     * @param string $expectedClass
-     */
-    public function testCreateReaderForFile($file, $expectedName, $expectedClass): void
-    {
         $actual = IOFactory::createReaderForFile($file);
-        self::assertInstanceOf($expectedClass, $actual);
+        self::assertSame($expectedClass, $actual::class);
+        IOFactory::load($file);
     }
 
-    /**
-     * @dataProvider providerIdentify
-     *
-     * @param string $file
-     * @param string $expectedName
-     * @param string $expectedClass
-     */
-    public function testLoad($file, $expectedName, $expectedClass): void
-    {
-        $actual = IOFactory::load($file);
-        self::assertInstanceOf(Spreadsheet::class, $actual);
-    }
-
-    public function providerIdentify()
+    public static function providerIdentify(): array
     {
         return [
             ['samples/templates/26template.xlsx', 'Xlsx', Reader\Xlsx::class],
             ['samples/templates/GnumericTest.gnumeric', 'Gnumeric', Reader\Gnumeric::class],
+            ['tests/data/Reader/Gnumeric/PageSetup.gnumeric.unzipped.xml', 'Gnumeric', Reader\Gnumeric::class],
             ['samples/templates/old.gnumeric', 'Gnumeric', Reader\Gnumeric::class],
             ['samples/templates/30template.xls', 'Xls', Reader\Xls::class],
             ['samples/templates/OOCalcTest.ods', 'Ods', Reader\Ods::class],
@@ -131,34 +96,115 @@ class IOFactoryTest extends TestCase
             // Following not readable by Excel.
             //['samples/templates/Excel2003XMLTest.xml', 'Xml', Reader\Xml::class],
             ['samples/templates/46readHtml.html', 'Html', Reader\Html::class],
+            ['tests/data/Reader/CSV/encoding.utf8bom.csv', 'Csv', Reader\Csv::class],
+            ['tests/data/Reader/HTML/charset.UTF-16.lebom.html', 'Html', Reader\Html::class],
+            ['tests/data/Reader/HTML/charset.UTF-8.bom.html', 'Html', Reader\Html::class],
         ];
+    }
+
+    public function testIdentifyInvalid(): void
+    {
+        $file = __DIR__ . '/../data/Reader/NotASpreadsheetFile.doc';
+
+        $this->expectException(ReaderException::class);
+        $this->expectExceptionMessage('Unable to identify a reader for this file');
+        IOFactory::identify($file);
+    }
+
+    public function testCreateInvalid(): void
+    {
+        $file = __DIR__ . '/../data/Reader/NotASpreadsheetFile.doc';
+
+        $this->expectException(ReaderException::class);
+        $this->expectExceptionMessage('Unable to identify a reader for this file');
+        IOFactory::createReaderForFile($file);
+    }
+
+    public function testLoadInvalid(): void
+    {
+        $file = __DIR__ . '/../data/Reader/NotASpreadsheetFile.doc';
+
+        $this->expectException(ReaderException::class);
+        $this->expectExceptionMessage('Unable to identify a reader for this file');
+        IOFactory::load($file);
+    }
+
+    public function testFormatAsExpected(): void
+    {
+        $fileName = 'samples/templates/30template.xls';
+
+        $actual = IOFactory::identify($fileName, [IOFactory::READER_XLS]);
+        self::assertSame('Xls', $actual);
+    }
+
+    public function testFormatAsExpectedAfterMerge(): void
+    {
+        $fileName = 'samples/templates/30template.xls';
+
+        $actual = IOFactory::identify($fileName, mergeArray: ['Csv' => Reader\CsvNoEscape::class]);
+        self::assertSame('Xls', $actual);
+    }
+
+    public function testFormatNotAsExpectedThrowsException(): void
+    {
+        $fileName = 'samples/templates/30template.xls';
+
+        $this->expectException(ReaderException::class);
+        IOFactory::identify($fileName, [IOFactory::READER_ODS]);
     }
 
     public function testIdentifyNonExistingFileThrowException(): void
     {
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(ReaderException::class);
 
         IOFactory::identify('/non/existing/file');
     }
 
     public function testIdentifyExistingDirectoryThrowExceptions(): void
     {
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(ReaderException::class);
 
         IOFactory::identify('.');
     }
 
-    public function testRegisterInvalidWriter(): void
+    public function testCreateInvalidWriter(): void
     {
-        $this->expectException(\PhpOffice\PhpSpreadsheet\Writer\Exception::class);
-
-        IOFactory::registerWriter('foo', 'bar');
+        $this->expectException(Writer\Exception::class);
+        $spreadsheet = new Spreadsheet();
+        IOFactory::createWriter($spreadsheet, 'bad');
     }
 
-    public function testRegisterInvalidReader(): void
+    public function testCreateInvalidReader(): void
     {
-        $this->expectException(\PhpOffice\PhpSpreadsheet\Reader\Exception::class);
+        $this->expectException(ReaderException::class);
+        IOFactory::createReader('bad');
+    }
 
-        IOFactory::registerReader('foo', 'bar');
+    public function testCreateReaderUnknownExtension(): void
+    {
+        $filename = 'samples/Reader/sampleData/example1.tsv';
+        $reader = IOFactory::createReaderForFile($filename);
+        self::assertEquals('PhpOffice\PhpSpreadsheet\Reader\Csv', $reader::class);
+    }
+
+    public function testCreateReaderCsvExtension(): void
+    {
+        $filename = 'samples/Reader/sampleData/example1.csv';
+        $reader = IOFactory::createReaderForFile($filename);
+        self::assertEquals('PhpOffice\PhpSpreadsheet\Reader\Csv', $reader::class);
+    }
+
+    public function testCreateReaderNoExtension(): void
+    {
+        $filename = 'samples/Reader/sampleData/example1xls';
+        $reader = IOFactory::createReaderForFile($filename);
+        self::assertEquals('PhpOffice\PhpSpreadsheet\Reader\Xls', $reader::class);
+    }
+
+    public function testCreateReaderNotSpreadsheet(): void
+    {
+        $this->expectException(ReaderException::class);
+        $filename = __FILE__;
+        IOFactory::createReaderForFile($filename);
     }
 }

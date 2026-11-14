@@ -1,30 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\Statistical;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
-use PhpOffice\PhpSpreadsheet\Calculation\Statistical;
-use PHPUnit\Framework\TestCase;
-
-class HarMeanTest extends TestCase
+class HarMeanTest extends AllSetupTeardown
 {
-    protected function setUp(): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerHARMEAN')]
+    public function testHARMEAN(mixed $expectedResult, mixed ...$args): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
+        $this->runTestCases('HARMEAN', $expectedResult, ...$args);
     }
 
-    /**
-     * @dataProvider providerHARMEAN
-     *
-     * @param mixed $expectedResult
-     */
-    public function testHARMEAN($expectedResult, ...$args): void
-    {
-        $result = Statistical::HARMEAN(...$args);
-        self::assertEqualsWithDelta($expectedResult, $result, 1E-12);
-    }
-
-    public function providerHARMEAN()
+    public static function providerHARMEAN(): array
     {
         return require 'tests/data/Calculation/Statistical/HARMEAN.php';
     }

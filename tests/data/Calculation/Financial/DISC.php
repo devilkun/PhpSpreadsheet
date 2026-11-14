@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 // settlement, maturity, price, redemption, basis, result
 
 return [
@@ -17,6 +19,14 @@ return [
         '2015-03-31',
         95,
         100,
+    ],
+    [
+        0.01,
+        '2010-04-01',
+        '2015-03-31',
+        95,
+        100,
+        null,
     ],
     [
         '#NUM!',

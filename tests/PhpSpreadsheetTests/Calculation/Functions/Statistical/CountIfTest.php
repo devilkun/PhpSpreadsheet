@@ -1,31 +1,59 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\Statistical;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
-use PhpOffice\PhpSpreadsheet\Calculation\Statistical;
-use PHPUnit\Framework\TestCase;
+use PhpOffice\PhpSpreadsheet\Calculation\Exception as CalcException;
+use PHPUnit\Framework\Attributes\DataProvider;
 
-class CountIfTest extends TestCase
+class CountIfTest extends AllSetupTeardown
 {
-    protected function setUp(): void
+    #[DataProvider('providerCOUNTIF')]
+    public function testCOUNTIF(mixed $expectedResult, mixed ...$args): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
+        $this->runTestCaseNoBracket('COUNTIF', $expectedResult, ...$args);
     }
 
-    /**
-     * @dataProvider providerCOUNTIF
-     *
-     * @param mixed $expectedResult
-     */
-    public function testCOUNTIF($expectedResult, ...$args): void
+    public function testMultipleRows(): void
     {
-        $result = Statistical::COUNTIF(...$args);
-        self::assertEqualsWithDelta($expectedResult, $result, 1E-12);
+        $sheet = $this->getSheet();
+        $sheet->fromArray([
+            ['apples', 'oranges', 'peaches', 'apples'],
+            ['bananas', 'mangoes', 'grapes', 'cherries'],
+        ]);
+        $sheet->getCell('Z99')->setValue('=COUNTIF(A1:D2,"*p*e*")');
+        self::assertSame(4, $sheet->getCell('Z99')->getCalculatedValue());
     }
 
-    public function providerCOUNTIF()
+    public function testLiteralLogicalCriterion(): void
+    {
+        $sheet = $this->getSheet();
+        $sheet->fromArray([[true], [false], [true], [1]], null, 'A1', true);
+        $sheet->getCell('Z98')->setValue('=COUNTIF(A1:A4,TRUE)');
+        $sheet->getCell('Z99')->setValue('=COUNTIF(A1:A4,FALSE)');
+        self::assertSame(2, $sheet->getCell('Z98')->getCalculatedValue());
+        self::assertSame(1, $sheet->getCell('Z99')->getCalculatedValue());
+    }
+
+    public static function providerCOUNTIF(): array
     {
         return require 'tests/data/Calculation/Statistical/COUNTIF.php';
+    }
+
+    public function testOutliers(): void
+    {
+        $sheet = $this->getSheet();
+        $sheet->getCell('A1')->setValue('=COUNTIF(5,"<32")');
+
+        try {
+            $sheet->getCell('A1')->getCalculatedValue();
+            self::fail('Should receive exception for non-array arg');
+        } catch (CalcException $e) {
+            self::assertStringContainsString('Must specify range of cells', $e->getMessage());
+        }
+
+        $sheet->getCell('A4')->setValue('=COUNTIF(#REF!,1)');
+        self::assertSame('#REF!', $sheet->getCell('A4')->getCalculatedValue());
     }
 }

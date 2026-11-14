@@ -1,9 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 return [
-    [
-        '#N/A',
-    ],
+    'no arguments' => ['exception'],
     [
         1,
         true,

@@ -1,10 +1,25 @@
 <?php
 
-/**
- * Bootstrap for PhpSpreadsheet classes.
- */
+// Bootstrap for PhpSpreadsheet samples.
 
-// This sucks, but we have to try to find the composer autoloader
+if (!defined('K_PATH_FONTS')) {
+    $path1 = __DIR__ . '/..'
+        . '/vendor/tecnickcom/tc-lib-pdf-font';
+    $realpath1 = realpath($path1);
+    if ($realpath1 !== false) {
+        $path = __DIR__ . '/..'
+            . '/tclibpdffonts/fonts/';
+        $path = realpath($path);
+        if ($path !== false) {
+            define(
+                'K_PATH_FONTS',
+                $path
+            );
+        }
+    }
+}
+
+// This is a pain, but we have to try to find the composer autoloader
 
 $paths = [
     __DIR__ . '/../vendor/autoload.php', // In case PhpSpreadsheet is cloned directly
@@ -19,4 +34,4 @@ foreach ($paths as $path) {
     }
 }
 
-throw new \Exception('Composer autoloader could not be found. Install dependencies with `composer install` and try again.');
+throw new Exception('Composer autoloader could not be found. Install dependencies with `composer install` and try again.');

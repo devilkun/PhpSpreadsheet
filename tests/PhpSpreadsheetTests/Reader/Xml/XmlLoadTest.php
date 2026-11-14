@@ -1,19 +1,55 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Reader\Xml;
 
+use DateTimeZone;
+use PhpOffice\PhpSpreadsheet\Exception as PhpSpreadsheetException;
 use PhpOffice\PhpSpreadsheet\Reader\Xml;
+use PhpOffice\PhpSpreadsheet\Settings;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PHPUnit\Framework\TestCase;
 
 class XmlLoadTest extends TestCase
 {
-    public function testLoad(): void
+    private ?Spreadsheet $spreadsheet = null;
+
+    private string $locale;
+
+    protected function setUp(): void
+    {
+        $this->locale = Settings::getLocale();
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->spreadsheet !== null) {
+            $this->spreadsheet->disconnectWorksheets();
+            $this->spreadsheet = null;
+        }
+        Settings::setLocale($this->locale);
+    }
+
+    public function testLoadEnglish(): void
+    {
+        $this->xtestLoad();
+    }
+
+    public function testLoadFrench(): void
+    {
+        Settings::setLocale('fr');
+        $this->xtestLoad();
+    }
+
+    public function xtestLoad(): void
     {
         $filename = __DIR__
             . '/../../../..'
             . '/samples/templates/excel2003.xml';
         $reader = new Xml();
-        $spreadsheet = $reader->load($filename);
+        $this->spreadsheet = $spreadsheet = $reader->load($filename);
         self::assertEquals(2, $spreadsheet->getSheetCount());
 
         $sheet = $spreadsheet->getSheet(1);
@@ -21,8 +57,18 @@ class XmlLoadTest extends TestCase
         self::assertEquals('BCD', $sheet->getCell('A4')->getValue());
         $props = $spreadsheet->getProperties();
         self::assertEquals('Mark Baker', $props->getCreator());
+        $creationDate = $props->getCreated();
+        $result = Date::formattedDateTimeFromTimestamp("$creationDate", 'Y-m-d\TH:i:s\Z', new DateTimeZone('UTC'));
+        self::assertEquals('2010-09-02T20:48:39Z', $result);
+        $creationDate = $props->getModified();
+        $result = Date::formattedDateTimeFromTimestamp("$creationDate", 'Y-m-d\TH:i:s\Z', new DateTimeZone('UTC'));
+        self::assertEquals('2010-09-03T21:48:39Z', $result);
         self::assertEquals('AbCd1234', $props->getCustomPropertyValue('my_API_Token'));
         self::assertEquals('2', $props->getCustomPropertyValue('myאInt'));
+        /** @var string */
+        $creationDate = $props->getCustomPropertyValue('my_API_Token_Expiry');
+        $result = Date::formattedDateTimeFromTimestamp("$creationDate", 'Y-m-d\TH:i:s\Z', new DateTimeZone('UTC'));
+        self::assertEquals('2019-01-31T07:00:00Z', $result);
 
         $sheet = $spreadsheet->getSheet(0);
         self::assertEquals('Sample Data', $sheet->getTitle());
@@ -36,6 +82,10 @@ class XmlLoadTest extends TestCase
         self::assertEquals('# ?0/??0', $sheet->getCell('A11')->getStyle()->getNumberFormat()->getFormatCode());
         // Same pattern, same value, different display in Gnumeric vs Excel
         //self::assertEquals('1 1/2', $sheet->getCell('A11')->getFormattedValue());
+        self::assertEquals('hh":"mm":"ss', $sheet->getCell('A13')->getStyle()->getNumberFormat()->getFormatCode());
+        self::assertEquals('02:30:00', $sheet->getCell('A13')->getFormattedValue());
+        self::assertEquals('d/m/yy hh":"mm', $sheet->getCell('A15')->getStyle()->getNumberFormat()->getFormatCode());
+        self::assertEquals('19/12/60 01:30', $sheet->getCell('A15')->getFormattedValue());
 
         self::assertEquals('=B1+C1', $sheet->getCell('H1')->getValue());
         self::assertEquals('=E2&F2', $sheet->getCell('J2')->getValue());
@@ -56,7 +106,7 @@ class XmlLoadTest extends TestCase
         $reader = new Xml();
         $filter = new XmlFilter();
         $reader->setReadFilter($filter);
-        $spreadsheet = $reader->load($filename);
+        $this->spreadsheet = $spreadsheet = $reader->load($filename);
         self::assertEquals(2, $spreadsheet->getSheetCount());
         $sheet = $spreadsheet->getSheet(1);
         self::assertEquals('Report Data', $sheet->getTitle());
@@ -72,27 +122,34 @@ class XmlLoadTest extends TestCase
             . '/samples/templates/excel2003.xml';
         $reader = new Xml();
         $reader->setLoadSheetsOnly(['Unknown Sheet', 'Report Data']);
-        $spreadsheet = $reader->load($filename);
+        $this->spreadsheet = $spreadsheet = $reader->load($filename);
         self::assertEquals(1, $spreadsheet->getSheetCount());
         $sheet = $spreadsheet->getSheet(0);
         self::assertEquals('Report Data', $sheet->getTitle());
         self::assertEquals('Third Heading', $sheet->getCell('C2')->getValue());
     }
 
+    public function testLoadNoSelectedSheets(): void
+    {
+        $this->expectException(PhpSpreadsheetException::class);
+        $this->expectExceptionMessage('You tried to set a sheet active by the out of bounds index');
+        $filename = __DIR__
+            . '/../../../..'
+            . '/samples/templates/excel2003.xml';
+        $reader = new Xml();
+        $reader->setLoadSheetsOnly(['Unknown Sheet', 'xReport Data']);
+        $this->spreadsheet = $reader->load($filename);
+    }
+
     public function testLoadUnusableSample(): void
     {
         // Sample spreadsheet is not readable by Excel.
-        // But PhpSpreadsheet can load it except for coverage test.
-        //global $argv;
-        //if (in_array('--coverage-clover', $argv)) {
-        //    self::markTestSkipped('Mysterious Travis coverage failure IOFactoryTest');
-        //}
+        // But PhpSpreadsheet can load it.
         $filename = __DIR__
             . '/../../../..'
-            //. '/samples/templates/Excel2003XMLTest.xml';
             . '/samples/templates/excel2003.short.bad.xml';
         $reader = new Xml();
-        $spreadsheet = $reader->load($filename);
+        $this->spreadsheet = $spreadsheet = $reader->load($filename);
         self::assertEquals(1, $spreadsheet->getSheetCount());
         $sheet = $spreadsheet->getSheet(0);
         self::assertEquals('Sample Data', $sheet->getTitle());

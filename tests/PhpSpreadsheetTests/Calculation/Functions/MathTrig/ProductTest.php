@@ -1,30 +1,26 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\MathTrig;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
-use PhpOffice\PhpSpreadsheet\Calculation\MathTrig;
-use PHPUnit\Framework\TestCase;
-
-class ProductTest extends TestCase
+class ProductTest extends AllSetupTeardown
 {
-    protected function setUp(): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerPRODUCT')]
+    public function testPRODUCT(mixed $expectedResult, mixed ...$args): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
-    }
-
-    /**
-     * @dataProvider providerPRODUCT
-     *
-     * @param mixed $expectedResult
-     */
-    public function testPRODUCT($expectedResult, ...$args): void
-    {
-        $result = MathTrig::PRODUCT(...$args);
+        $sheet = $this->getSheet();
+        $row = 0;
+        foreach ($args as $arg) {
+            ++$row;
+            $sheet->getCell("A$row")->setValue($arg);
+        }
+        $sheet->getCell('B1')->setValue("=PRODUCT(A1:A$row)");
+        $result = $sheet->getCell('B1')->getCalculatedValue();
         self::assertEqualsWithDelta($expectedResult, $result, 1E-12);
     }
 
-    public function providerPRODUCT()
+    public static function providerPRODUCT(): array
     {
         return require 'tests/data/Calculation/MathTrig/PRODUCT.php';
     }

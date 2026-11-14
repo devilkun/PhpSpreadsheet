@@ -1,24 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\Statistical;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Statistical;
-use PHPUnit\Framework\TestCase;
-
-class KurtTest extends TestCase
+class KurtTest extends AllSetupTeardown
 {
-    /**
-     * @dataProvider providerKURT
-     *
-     * @param mixed $expectedResult
-     */
-    public function testKURT($expectedResult, ...$values): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerKURT')]
+    public function testKURT(mixed $expectedResult, mixed ...$args): void
     {
-        $result = Statistical::KURT(...$values);
-        self::assertEqualsWithDelta($expectedResult, $result, 1E-12);
+        $this->runTestCases('KURT', $expectedResult, ...$args);
     }
 
-    public function providerKURT()
+    public static function providerKURT(): array
     {
         return require 'tests/data/Calculation/Statistical/KURT.php';
     }

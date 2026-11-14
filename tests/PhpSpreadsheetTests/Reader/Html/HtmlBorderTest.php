@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Reader\Html;
 
 use PhpOffice\PhpSpreadsheet\Reader\Html;
@@ -18,10 +20,11 @@ class HtmlBorderTest extends TestCase
                         <td style="border-left: 1px solid green;">Border left</td>
                         <td style="border-right: 1px solid #333333;">Border right</td>
                         <td style="border: none"></td>
+                        <td style="border: dashed;"></td>
+                        <td style="border: dotted #333333;"></td>
                     </tr>
                 </table>';
-        $filename = HtmlHelper::createHtml($html);
-        $spreadsheet = HtmlHelper::loadHtmlIntoSpreadsheet($filename, true);
+        $spreadsheet = HtmlHelper::loadHtmlStringIntoSpreadsheet($html);
         $firstSheet = $spreadsheet->getSheet(0);
         $style = $firstSheet->getCell('A1')->getStyle();
         $borders = $style->getBorders();
@@ -61,11 +64,20 @@ class HtmlBorderTest extends TestCase
         foreach ([$borders->getTop(), $borders->getBottom(), $borders->getLeft(), $borders->getRight()] as $border) {
             self::assertEquals(Border::BORDER_NONE, $border->getBorderStyle());
         }
+
+        $style = $firstSheet->getCell('G1')->getStyle();
+        $borders = $style->getBorders();
+        $border = $borders->getRight();
+        self::assertEquals(Border::BORDER_DASHED, $border->getBorderStyle());
+
+        $style = $firstSheet->getCell('H1')->getStyle();
+        $borders = $style->getBorders();
+        $border = $borders->getRight();
+        self::assertEquals(Border::BORDER_DOTTED, $border->getBorderStyle());
+        self::assertEquals('333333', $border->getColor()->getRGB());
     }
 
-    /**
-     * @dataProvider providerBorderStyle
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerBorderStyle')]
     public function testBorderStyle(string $style, string $expectedResult): void
     {
         $borders = Html::getBorderMappings();
@@ -81,6 +93,7 @@ class HtmlBorderTest extends TestCase
         }
         $tests = $this->providerBorderStyle();
         foreach ($tests as $test) {
+            /** @var array<int, int|string> $test */
             $covered[$test[0]] = 1;
         }
         foreach ($covered as $key => $val) {
@@ -88,7 +101,7 @@ class HtmlBorderTest extends TestCase
         }
     }
 
-    public function providerBorderStyle(): array
+    public static function providerBorderStyle(): array
     {
         return [
             ['dash-dot', Border::BORDER_DASHDOT],

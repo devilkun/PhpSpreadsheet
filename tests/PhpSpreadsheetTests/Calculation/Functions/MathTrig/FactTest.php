@@ -1,32 +1,76 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\MathTrig;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
-use PhpOffice\PhpSpreadsheet\Calculation\MathTrig;
-use PHPUnit\Framework\TestCase;
+use PhpOffice\PhpSpreadsheet\Calculation\Calculation;
 
-class FactTest extends TestCase
+class FactTest extends AllSetupTeardown
 {
-    protected function setUp(): void
+    const FACT_PRECISION = 1E-12;
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerFACT')]
+    public function testFACT(mixed $expectedResult, mixed $arg1): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
+        $this->mightHaveException($expectedResult);
+        $sheet = $this->getSheet();
+        if ($arg1 !== null) {
+            $sheet->getCell('A1')->setValue($arg1);
+        }
+        if ($arg1 === 'omitted') {
+            $sheet->getCell('B1')->setValue('=FACT()');
+        } else {
+            $sheet->getCell('B1')->setValue('=FACT(A1)');
+        }
+        $result = $sheet->getCell('B1')->getCalculatedValue();
+        self::assertEquals($expectedResult, $result);
     }
 
-    /**
-     * @dataProvider providerFACT
-     *
-     * @param mixed $expectedResult
-     * @param $value
-     */
-    public function testFACT($expectedResult, $value): void
-    {
-        $result = MathTrig::FACT($value);
-        self::assertEqualsWithDelta($expectedResult, $result, 1E-12);
-    }
-
-    public function providerFACT()
+    public static function providerFACT(): array
     {
         return require 'tests/data/Calculation/MathTrig/FACT.php';
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerFACTGnumeric')]
+    public function testFACTGnumeric(mixed $expectedResult, mixed $arg1): void
+    {
+        $this->mightHaveException($expectedResult);
+        self::setGnumeric();
+        $sheet = $this->getSheet();
+        if ($arg1 !== null) {
+            $sheet->getCell('A1')->setValue($arg1);
+        }
+        if ($arg1 === 'omitted') {
+            $sheet->getCell('B1')->setValue('=FACT()');
+        } else {
+            $sheet->getCell('B1')->setValue('=FACT(A1)');
+        }
+        $result = $sheet->getCell('B1')->getCalculatedValue();
+        self::assertEqualsWithDelta($expectedResult, $result, self::FACT_PRECISION);
+    }
+
+    public static function providerFACTGnumeric(): array
+    {
+        return require 'tests/data/Calculation/MathTrig/FACTGNUMERIC.php';
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerFactArray')]
+    public function testFactArray(array $expectedResult, string $array): void
+    {
+        $calculation = Calculation::getInstance();
+
+        $formula = "=FACT({$array})";
+        $result = $calculation->calculateFormula($formula);
+        self::assertEqualsWithDelta($expectedResult, $result, self::FACT_PRECISION);
+    }
+
+    public static function providerFactArray(): array
+    {
+        return [
+            'row vector' => [[['#NUM!', 120, 362880]], '{-2, 5, 9}'],
+            'column vector' => [[['#NUM!'], [120], [362880]], '{-2; 5; 9}'],
+            'matrix' => [[['#NUM!', 120], [362880, 6]], '{-2, 5; 9, 3.5}'],
+        ];
     }
 }

@@ -2,35 +2,31 @@
 
 namespace Samples\Sample14;
 
-use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Reader\Csv;
 use PhpOffice\PhpSpreadsheet\Reader\IReadFilter;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
 require __DIR__ . '/../Header.php';
-
-$inputFileType = 'Csv';
+/** @var \PhpOffice\PhpSpreadsheet\Helper\Sample $helper */
 $inputFileName = __DIR__ . '/sampleData/example2.csv';
 
 /**  Define a Read Filter class implementing IReadFilter  */
 class ChunkReadFilter implements IReadFilter
 {
-    private $startRow = 0;
+    private int $startRow = 0;
 
-    private $endRow = 0;
+    private int $endRow = 0;
 
     /**
      * Set the list of rows that we want to read.
-     *
-     * @param mixed $startRow
-     * @param mixed $chunkSize
      */
-    public function setRows($startRow, $chunkSize): void
+    public function setRows(int $startRow, int $chunkSize): void
     {
         $this->startRow = $startRow;
         $this->endRow = $startRow + $chunkSize;
     }
 
-    public function readCell($column, $row, $worksheetName = '')
+    public function readCell(string $columnAddress, int $row, string $worksheetName = ''): bool
     {
         //  Only read the heading row, and the rows that are configured in $this->_startRow and $this->_endRow
         if (($row == 1) || ($row >= $this->startRow && $row < $this->endRow)) {
@@ -41,9 +37,9 @@ class ChunkReadFilter implements IReadFilter
     }
 }
 
-$helper->log('Loading file ' . pathinfo($inputFileName, PATHINFO_BASENAME) . ' using IOFactory with a defined reader type of ' . $inputFileType);
+$helper->log('Loading file ' . pathinfo($inputFileName, PATHINFO_BASENAME) . ' using Csv reader');
 // Create a new Reader of the type defined in $inputFileType
-$reader = IOFactory::createReader($inputFileType);
+$reader = new Csv();
 
 // Define how many rows we want to read for each "chunk"
 $chunkSize = 100;
@@ -52,8 +48,8 @@ $chunkFilter = new ChunkReadFilter();
 
 // Tell the Reader that we want to use the Read Filter that we've Instantiated
 // and that we want to store it in contiguous rows/columns
-$reader->setReadFilter($chunkFilter)
-    ->setContiguous(true);
+$reader->setReadFilter($chunkFilter);
+$reader->setContiguous(true);
 
 // Instantiate a new PhpSpreadsheet object manually
 $spreadsheet = new Spreadsheet();
@@ -81,6 +77,11 @@ $loadedSheetNames = $spreadsheet->getSheetNames();
 foreach ($loadedSheetNames as $sheetIndex => $loadedSheetName) {
     $helper->log('<b>Worksheet #' . $sheetIndex . ' -> ' . $loadedSheetName . '</b>');
     $spreadsheet->setActiveSheetIndexByName($loadedSheetName);
-    $sheetData = $spreadsheet->getActiveSheet()->toArray(null, false, false, true);
-    var_dump($sheetData);
+    $sheet = $spreadsheet->getActiveSheet();
+
+    $activeRange = $sheet->calculateWorksheetDataDimension();
+    $sheet->getStyle($activeRange)->getNumberFormat()
+        ->setFormatCode('0.000');
+    $sheetData = $sheet->rangeToArray($activeRange, null, true, true, true);
+    $helper->displayGrid($sheetData, true);
 }

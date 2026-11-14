@@ -1,31 +1,54 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\MathTrig;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
-use PhpOffice\PhpSpreadsheet\Calculation\MathTrig;
-use PHPUnit\Framework\TestCase;
+use PhpOffice\PhpSpreadsheet\Calculation\Calculation;
 
-class PowerTest extends TestCase
+class PowerTest extends AllSetupTeardown
 {
-    protected function setUp(): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerPOWER')]
+    public function testPOWER(mixed $expectedResult, mixed $base = 'omitted', mixed $exponent = 'omitted'): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
-    }
-
-    /**
-     * @dataProvider providerPOWER
-     *
-     * @param mixed $expectedResult
-     */
-    public function testPOWER($expectedResult, ...$args): void
-    {
-        $result = MathTrig::POWER(...$args);
+        $this->mightHaveException($expectedResult);
+        $sheet = $this->getSheet();
+        if ($base !== null) {
+            $sheet->getCell('A1')->setValue($base);
+        }
+        if ($exponent !== null) {
+            $sheet->getCell('A2')->setValue($exponent);
+        }
+        if ($base === 'omitted') {
+            $sheet->getCell('B1')->setValue('=POWER()');
+        } elseif ($exponent === 'omitted') {
+            $sheet->getCell('B1')->setValue('=POWER(A1)');
+        } else {
+            $sheet->getCell('B1')->setValue('=POWER(A1,A2)');
+        }
+        $result = $sheet->getCell('B1')->getCalculatedValue();
         self::assertEqualsWithDelta($expectedResult, $result, 1E-12);
     }
 
-    public function providerPOWER()
+    public static function providerPOWER(): array
     {
         return require 'tests/data/Calculation/MathTrig/POWER.php';
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerPowerArray')]
+    public function testPowerArray(array $expectedResult, string $argument1, string $argument2): void
+    {
+        $calculation = Calculation::getInstance();
+
+        $formula = "=POWER({$argument1}, {$argument2})";
+        $result = $calculation->calculateFormula($formula);
+        self::assertEqualsWithDelta($expectedResult, $result, 1.0e-14);
+    }
+
+    public static function providerPowerArray(): array
+    {
+        return [
+            'matrix' => [[[729, 512, 343], [216, 125, 64], [27, 8, 1]], '{9, 8, 7; 6, 5, 4; 3, 2, 1}', '3'],
+        ];
     }
 }

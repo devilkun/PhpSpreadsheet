@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\Statistical;
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -7,12 +9,8 @@ use PHPUnit\Framework\TestCase;
 
 class ModeTest extends TestCase
 {
-    /**
-     * @dataProvider providerMODE
-     *
-     * @param mixed $expectedResult
-     */
-    public function testMODE($expectedResult, string $str): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerMODE')]
+    public function testMODE(mixed $expectedResult, string $str): void
     {
         $workbook = new Spreadsheet();
         $sheet = $workbook->getActiveSheet();
@@ -24,7 +22,7 @@ class ModeTest extends TestCase
         self::assertEquals($expectedResult, $sheet->getCell("C$row")->getCalculatedValue());
     }
 
-    public function providerMODE(): array
+    public static function providerMODE(): array
     {
         return require 'tests/data/Calculation/Statistical/MODE.php';
     }
@@ -32,11 +30,12 @@ class ModeTest extends TestCase
     public function testMODENoArgs(): void
     {
         $this->expectException(\PhpOffice\PhpSpreadsheet\Calculation\Exception::class);
+        $this->expectExceptionMessage('Wrong number of arguments for MODE() function');
 
         $workbook = new Spreadsheet();
         $sheet = $workbook->getActiveSheet();
 
         $sheet->setCellValue('B1', '=MODE()');
-        self::assertEquals('#N/A', $sheet->getCell('B1')->getCalculatedValue());
+        $sheet->getCell('B1')->getCalculatedValue();
     }
 }

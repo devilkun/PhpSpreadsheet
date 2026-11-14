@@ -1,32 +1,48 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\MathTrig;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
-use PhpOffice\PhpSpreadsheet\Calculation\MathTrig;
-use PHPUnit\Framework\TestCase;
+use PhpOffice\PhpSpreadsheet\Calculation\Calculation;
 
-class AcotTest extends TestCase
+class AcotTest extends AllSetupTeardown
 {
-    protected function setUp(): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerACOT')]
+    public function testACOT(float|int|string $expectedResult, float|int|string $number): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
+        $this->mightHaveException($expectedResult);
+        $sheet = $this->getSheet();
+        $sheet->setCellValue('A2', 1.3);
+        $sheet->setCellValue('A3', 2.7);
+        $sheet->setCellValue('A4', -3.8);
+        $sheet->setCellValue('A5', -5);
+        $sheet->getCell('A1')->setValue("=ACOT($number)");
+        $result = $sheet->getCell('A1')->getCalculatedValue();
+        self::assertEqualsWithDelta($expectedResult, $result, 1E-9);
     }
 
-    /**
-     * @dataProvider providerACOT
-     *
-     * @param mixed $expectedResult
-     * @param mixed $number
-     */
-    public function testACOT($expectedResult, $number): void
-    {
-        $result = MathTrig::ACOT($number);
-        self::assertEqualsWithDelta($expectedResult, $result, 1E-12);
-    }
-
-    public function providerACOT()
+    public static function providerACOT(): array
     {
         return require 'tests/data/Calculation/MathTrig/ACOT.php';
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerAcotArray')]
+    public function testAcotArray(array $expectedResult, string $array): void
+    {
+        $calculation = Calculation::getInstance();
+
+        $formula = "=ACOT({$array})";
+        $result = $calculation->calculateFormula($formula);
+        self::assertEqualsWithDelta($expectedResult, $result, 1.0e-14);
+    }
+
+    public static function providerAcotArray(): array
+    {
+        return [
+            'row vector' => [[[0.78539816339745, 1.10714871779409, 2.35619449019234]], '{1, 0.5, -1}'],
+            'column vector' => [[[0.78539816339745], [1.10714871779409], [2.35619449019234]], '{1; 0.5; -1}'],
+            'matrix' => [[[0.78539816339745, 1.10714871779409], [1.57079632679490, 2.35619449019234]], '{1, 0.5; 0, -1}'],
+        ];
     }
 }

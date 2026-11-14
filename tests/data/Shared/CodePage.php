@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     // ANSI Latin I (BIFF4-BIFF7)
     [
@@ -233,7 +235,7 @@ return [
     ],
     // Macintosh Central Europe
     [
-        'MACCENTRALEUROPE',
+        ['MACCENTRALEUROPE', 'MAC-CENTRALEUROPE'],
         10029,
     ],
     // Macintosh Icelandic
@@ -270,5 +272,10 @@ return [
     [
         'UTF-8',
         65001,
+    ],
+    // invalid
+    [
+        'exception',
+        99999,
     ],
 ];

@@ -1,24 +1,25 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\Statistical;
 
 use PhpOffice\PhpSpreadsheet\Calculation\Statistical;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
+// TODO run test in spreadsheet context
 class LinEstTest extends TestCase
 {
     /**
-     * @dataProvider providerLINEST
-     *
-     * @param mixed $expectedResult
-     * @param mixed $xValues
-     * @param mixed $yValues
-     * @param mixed $const
-     * @param mixed $stats
+     * @param mixed[] $yValues
+     * @param mixed[] $xValues
      */
-    public function testLINEST($expectedResult, $yValues, $xValues, $const, $stats): void
+    #[DataProvider('providerLINEST')]
+    public function testLINEST(array $expectedResult, array $yValues, array $xValues, mixed $const, mixed $stats): void
     {
-        $result = Statistical::LINEST($yValues, $xValues, $const, $stats);
+        $result = Statistical\Trends::LINEST($yValues, $xValues, $const, $stats);
+        self::assertIsArray($result);
 
         $elements = count($expectedResult);
         for ($element = 0; $element < $elements; ++$element) {
@@ -26,7 +27,7 @@ class LinEstTest extends TestCase
         }
     }
 
-    public function providerLINEST()
+    public static function providerLINEST(): array
     {
         return require 'tests/data/Calculation/Statistical/LINEST.php';
     }

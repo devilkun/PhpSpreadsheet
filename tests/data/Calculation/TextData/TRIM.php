@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     [
         'HELLO',
@@ -29,4 +31,5 @@ return [
         null,
         null,
     ],
+    'no arguments' => ['exception'],
 ];

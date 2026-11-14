@@ -6,7 +6,9 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx as XlsxWriter;
 require __DIR__ . '/../Header.php';
 
 // Create temporary file that will be read
+/** @var PhpOffice\PhpSpreadsheet\Spreadsheet */
 $sampleSpreadsheet = require __DIR__ . '/../templates/chartSpreadsheet.php';
+/** @var PhpOffice\PhpSpreadsheet\Helper\Sample $helper */
 $filename = $helper->getTemporaryFilename();
 $writer = new XlsxWriter($sampleSpreadsheet);
 $writer->setIncludeCharts(true);
@@ -32,9 +34,4 @@ $worksheet->fromArray(
 );
 
 // Save Excel 2007 file
-$filename = $helper->getFilename(__FILE__);
-$writer = new XlsxWriter($spreadsheet);
-$writer->setIncludeCharts(true);
-$callStartTime = microtime(true);
-$writer->save($filename);
-$helper->logWrite($writer, $filename, $callStartTime);
+$helper->write($spreadsheet, __FILE__, ['Xlsx'], true);

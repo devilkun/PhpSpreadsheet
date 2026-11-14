@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 //  formula, expectedResultExcel, expectedResultOpenOffice
 
 return [
@@ -239,6 +241,36 @@ return [
         true,
     ],
     [
+        '= NULL = 0',
+        true,
+        true,
+    ],
+    [
+        '= NULL < 0',
+        false,
+        false,
+    ],
+    [
+        '= NULL <= 0',
+        true,
+        true,
+    ],
+    [
+        '= NULL > 0',
+        false,
+        false,
+    ],
+    [
+        '= NULL >= 0',
+        true,
+        true,
+    ],
+    [
+        '= NULL <> 0',
+        false,
+        false,
+    ],
+    [
         '="A" > "b"',
         false,
         true,
@@ -257,6 +289,58 @@ return [
         '="b" > "A"',
         true,
         false,
+    ],
+    // Values of different types are ordered by type: numbers < text < FALSE < TRUE.
+    // LibreOffice treats logical values as numbers.
+    [
+        '=""<75',
+        false,
+        false,
+    ],
+    [
+        '="">0',
+        true,
+        true,
+    ],
+    [
+        '="a">1E+100',
+        true,
+        true,
+    ],
+    [
+        '=1<"a"',
+        true,
+        true,
+    ],
+    [
+        '=1="a"',
+        false,
+        false,
+    ],
+    [
+        '=FALSE>"zzz"',
+        true,
+        false,
+    ],
+    [
+        '="a"<TRUE',
+        true,
+        false,
+    ],
+    [
+        '=TRUE=1',
+        false,
+        true,
+    ],
+    [
+        '=TRUE>1',
+        true,
+        false,
+    ],
+    [
+        '=FALSE<1',
+        false,
+        true,
     ],
     // Test natural sorting is not used
     [

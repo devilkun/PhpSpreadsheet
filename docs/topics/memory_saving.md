@@ -1,6 +1,6 @@
 # Memory saving
 
-PhpSpreadsheet uses an average of about 1k per cell in your worksheets, so
+PhpSpreadsheet uses an average of about 1k per cell (1.6k on 64-bit PHP) in your worksheets, so
 large workbooks can quickly use up available memory. Cell caching
 provides a mechanism that allows PhpSpreadsheet to maintain the cell
 objects in a smaller size of memory, or off-memory (eg: on disk, in APCu,
@@ -53,19 +53,24 @@ details, but here are a few suggestions that should get you started.
 
 ### APCu
 
-Require the packages into your project:
+Require Symfony Cache in your project:
 
 ```sh
-composer require cache/simple-cache-bridge cache/apcu-adapter
+composer require symfony/cache
 ```
+
+You must also install and enable the APCu PHP extension for your environment.
 
 Configure PhpSpreadsheet with something like:
 
 ```php
-$pool = new \Cache\Adapter\Apcu\ApcuCachePool();
-$simpleCache = new \Cache\Bridge\SimpleCache\SimpleCacheBridge($pool);
+use Symfony\Component\Cache\Adapter\ApcuAdapter;
+use Symfony\Component\Cache\Psr16Cache;
 
-\PhpOffice\PhpSpreadsheet\Settings::setCache($simpleCache);
+$apcuAdapter = new ApcuAdapter();
+$cache = new Psr16Cache($apcuAdapter);
+
+\PhpOffice\PhpSpreadsheet\Settings::setCache($cache);
 ```
 
 ### Redis

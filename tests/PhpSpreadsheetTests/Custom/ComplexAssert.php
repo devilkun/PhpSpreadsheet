@@ -1,27 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Custom;
 
 use Complex\Complex;
+use PHPUnit\Framework\TestCase;
 
-class ComplexAssert
+class ComplexAssert extends TestCase
 {
-    private $errorMessage = '';
+    protected float $complexPrecision = 1E-12;
 
-    private function testExpectedExceptions($expected, $actual)
-    {
-        //    Expecting an error, so we do a straight string comparison
-        if ($expected === $actual) {
-            return true;
-        } elseif ($expected === INF && $actual === 'INF') {
-            return true;
-        }
-        $this->errorMessage = 'Expected Error: ' . $actual . ' !== ' . $expected;
-
-        return false;
-    }
-
-    private function adjustDelta($expected, $actual, $delta)
+    private function adjustDelta(float $expected, float $actual, float $delta): float
     {
         $adjustedDelta = $delta;
 
@@ -33,50 +23,55 @@ class ComplexAssert
         return $adjustedDelta > 1.0 ? 1.0 : $adjustedDelta;
     }
 
-    public function assertComplexEquals($expected, $actual, $delta = 0)
+    public function assertComplexEquals(mixed $expected, mixed $actual, ?float $delta = null): bool
     {
-        if ($expected === INF || (is_string($expected) && $expected[0] === '#')) {
-            return $this->testExpectedExceptions($expected, $actual);
+        if ($expected === INF) {
+            self::assertSame('INF', $actual);
+
+            return true;
         }
-
-        $expectedComplex = new Complex($expected);
-        $actualComplex = new Complex($actual);
-
-        if (!is_numeric($actualComplex->getReal()) || !is_numeric($expectedComplex->getReal())) {
-            if ($actualComplex->getReal() !== $expectedComplex->getReal()) {
-                $this->errorMessage = 'Mismatched String: ' . $actualComplex->getReal() . ' !== ' . $expectedComplex->getReal();
-
-                return false;
-            }
+        if (is_string($expected) && $expected[0] === '#') {
+            self::assertSame(
+                $expected,
+                $actual,
+                'Mismatched Error'
+            );
 
             return true;
         }
 
-        $adjustedDelta = $this->adjustDelta($expectedComplex->getReal(), $actualComplex->getReal(), $delta);
-        if (abs($actualComplex->getReal() - $expectedComplex->getReal()) > $adjustedDelta) {
-            $this->errorMessage = 'Mismatched Real part: ' . $actualComplex->getReal() . ' != ' . $expectedComplex->getReal();
-
-            return false;
+        if ($delta === null) {
+            $delta = $this->complexPrecision;
         }
+        $expectedComplex = new Complex($expected);
+        $actualComplex = new Complex($actual);
 
-        $adjustedDelta = $this->adjustDelta($expectedComplex->getImaginary(), $actualComplex->getImaginary(), $delta);
-        if (abs($actualComplex->getImaginary() - $expectedComplex->getImaginary()) > $adjustedDelta) {
-            $this->errorMessage = 'Mismatched Imaginary part: ' . $actualComplex->getImaginary() . ' != ' . $expectedComplex->getImaginary();
+        $comparand1 = $expectedComplex->getReal();
+        $comparand2 = $actualComplex->getReal();
+        $adjustedDelta = $this->adjustDelta($comparand1, $comparand2, $delta);
+        self::assertEqualsWithDelta(
+            $comparand1,
+            $comparand2,
+            $adjustedDelta,
+            'Mismatched Real part'
+        );
 
-            return false;
-        }
+        $comparand1 = $expectedComplex->getImaginary();
+        $comparand2 = $actualComplex->getImaginary();
+        $adjustedDelta = $this->adjustDelta($comparand1, $comparand2, $delta);
+        self::assertEqualsWithDelta(
+            $comparand1,
+            $comparand2,
+            $adjustedDelta,
+            'Mismatched Imaginary part'
+        );
 
-        if ($actualComplex->getSuffix() !== $actualComplex->getSuffix()) {
-            $this->errorMessage = 'Mismatched Suffix: ' . $actualComplex->getSuffix() . ' != ' . $expectedComplex->getSuffix();
-
-            return false;
-        }
+        self::assertSame(
+            $expectedComplex->getSuffix(),
+            $actualComplex->getSuffix(),
+            'Mismatched Suffix'
+        );
 
         return true;
-    }
-
-    public function getErrorMessage()
-    {
-        return $this->errorMessage;
     }
 }

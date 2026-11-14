@@ -1,51 +1,62 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\TextData;
 
-use PhpOffice\PhpSpreadsheet\Calculation\TextData;
+use PhpOffice\PhpSpreadsheet\Calculation\Calculation;
 use PhpOffice\PhpSpreadsheet\Shared\StringHelper;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
-class ValueTest extends TestCase
+class ValueTest extends AllSetupTeardown
 {
-    private $currencyCode;
-
-    private $decimalSeparator;
-
-    private $thousandsSeparator;
-
-    protected function setUp(): void
-    {
-        $this->currencyCode = StringHelper::getCurrencyCode();
-        $this->decimalSeparator = StringHelper::getDecimalSeparator();
-        $this->thousandsSeparator = StringHelper::getThousandsSeparator();
-    }
-
     protected function tearDown(): void
     {
-        StringHelper::setCurrencyCode($this->currencyCode);
-        StringHelper::setDecimalSeparator($this->decimalSeparator);
-        StringHelper::setThousandsSeparator($this->thousandsSeparator);
+        parent::tearDown();
+        StringHelper::setCurrencyCode(null);
+        StringHelper::setDecimalSeparator(null);
+        StringHelper::setThousandsSeparator(null);
     }
 
-    /**
-     * @dataProvider providerVALUE
-     *
-     * @param mixed $expectedResult
-     * @param $value
-     */
-    public function testVALUE($expectedResult, $value): void
+    #[DataProvider('providerVALUE')]
+    public function testVALUE(mixed $expectedResult, mixed $value = 'omitted'): void
     {
         StringHelper::setDecimalSeparator('.');
         StringHelper::setThousandsSeparator(' ');
         StringHelper::setCurrencyCode('$');
 
-        $result = TextData::VALUE($value);
+        $this->mightHaveException($expectedResult);
+        $sheet = $this->getSheet();
+        if ($value === 'omitted') {
+            $sheet->getCell('B1')->setValue('=VALUE()');
+        } else {
+            $this->setCell('A1', $value);
+            $sheet->getCell('B1')->setValue('=VALUE(A1)');
+        }
+        $result = $sheet->getCell('B1')->getCalculatedValue();
         self::assertEqualsWithDelta($expectedResult, $result, 1E-8);
     }
 
-    public function providerVALUE()
+    public static function providerVALUE(): array
     {
         return require 'tests/data/Calculation/TextData/VALUE.php';
+    }
+
+    /** @param mixed[] $expectedResult */
+    #[DataProvider('providerValueArray')]
+    public function testValueArray(array $expectedResult, string $argument): void
+    {
+        $calculation = Calculation::getInstance();
+
+        $formula = "=VALUE({$argument})";
+        $result = $calculation->calculateFormula($formula);
+        self::assertEqualsWithDelta($expectedResult, $result, 1.0e-14);
+    }
+
+    public static function providerValueArray(): array
+    {
+        return [
+            'row vector' => [[[44604, -1234.567]], '{"12-Feb-2022", "$ -1,234.567"}'],
+        ];
     }
 }

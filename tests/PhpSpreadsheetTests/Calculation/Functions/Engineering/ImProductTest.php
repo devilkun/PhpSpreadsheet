@@ -1,48 +1,88 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\Engineering;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Engineering;
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
+use PhpOffice\PhpSpreadsheet\Calculation\Calculation;
+use PhpOffice\PhpSpreadsheet\Calculation\Engineering\ComplexOperations;
+use PhpOffice\PhpSpreadsheet\Calculation\Exception as CalculationException;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheetTests\Calculation\Functions\FormulaArguments;
 use PhpOffice\PhpSpreadsheetTests\Custom\ComplexAssert;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
-class ImProductTest extends TestCase
+class ImProductTest extends ComplexAssert
 {
-    const COMPLEX_PRECISION = 1E-8;
-
     /**
-     * @var ComplexAssert
+     * @param string ...$args variadic arguments
      */
-    protected $complexAssert;
-
-    protected function setUp(): void
+    #[DataProvider('providerIMPRODUCT')]
+    public function testDirectCallToIMPRODUCT(mixed $expectedResult, ...$args): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
-        $this->complexAssert = new ComplexAssert();
+        $result = ComplexOperations::IMPRODUCT(...$args);
+        $this->assertComplexEquals($expectedResult, $result);
     }
 
-    protected function tearDown(): void
+    #[DataProvider('providerIMPRODUCT')]
+    public function testIMPRODUCTAsFormula(mixed $expectedResult, mixed ...$args): void
     {
-        $this->complexAssert = null;
+        $arguments = new FormulaArguments(...$args);
+
+        $calculation = Calculation::getInstance();
+        $formula = "=IMPRODUCT({$arguments})";
+
+        /** @var float|int|string */
+        $result = $calculation->calculateFormula($formula);
+        $this->assertComplexEquals($expectedResult, $result);
     }
 
-    /**
-     * @dataProvider providerIMPRODUCT
-     *
-     * @param mixed $expectedResult
-     */
-    public function testIMPRODUCT($expectedResult, ...$args): void
+    #[DataProvider('providerIMPRODUCT')]
+    public function testIMPRODUCTInWorksheet(mixed $expectedResult, mixed ...$args): void
     {
-        $result = Engineering::IMPRODUCT(...$args);
-        self::assertTrue(
-            $this->complexAssert->assertComplexEquals($expectedResult, $result, self::COMPLEX_PRECISION),
-            $this->complexAssert->getErrorMessage()
-        );
+        $arguments = new FormulaArguments(...$args);
+
+        $spreadsheet = new Spreadsheet();
+        $worksheet = $spreadsheet->getActiveSheet();
+        $argumentCells = $arguments->populateWorksheet($worksheet);
+        $formula = "=IMPRODUCT({$argumentCells})";
+
+        $result = $worksheet->setCellValue('A1', $formula)
+            ->getCell('A1')
+            ->getCalculatedValue();
+        $this->assertComplexEquals($expectedResult, $result);
+
+        $spreadsheet->disconnectWorksheets();
     }
 
-    public function providerIMPRODUCT()
+    public static function providerIMPRODUCT(): array
     {
         return require 'tests/data/Calculation/Engineering/IMPRODUCT.php';
+    }
+
+    #[DataProvider('providerUnhappyIMPRODUCT')]
+    public function testIMPRODUCTUnhappyPath(string $expectedException, mixed ...$args): void
+    {
+        $arguments = new FormulaArguments(...$args);
+
+        $spreadsheet = new Spreadsheet();
+        $worksheet = $spreadsheet->getActiveSheet();
+        $argumentCells = $arguments->populateWorksheet($worksheet);
+        $formula = "=IMPRODUCT({$argumentCells})";
+
+        $this->expectException(CalculationException::class);
+        $this->expectExceptionMessage($expectedException);
+        $worksheet->setCellValue('A1', $formula)
+            ->getCell('A1')
+            ->getCalculatedValue();
+
+        $spreadsheet->disconnectWorksheets();
+    }
+
+    public static function providerUnhappyIMPRODUCT(): array
+    {
+        return [
+            ['Formula Error: Wrong number of arguments for IMPRODUCT() function'],
+        ];
     }
 }

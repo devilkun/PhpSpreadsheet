@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     [
         'abcdefghi',
@@ -10,6 +12,18 @@ return [
         'MARK BAKER',
     ],
     [
+        'buenos días',
+        'BUENOS DÍAS',
+    ],
+    [
+        'καλημερα',
+        'ΚΑΛΗΜΕΡΑ',
+    ],
+    [
+        'доброе утро',
+        'ДОБРОЕ УТРО',
+    ],
+    [
         'true',
         true,
     ],
@@ -17,4 +31,9 @@ return [
         'false',
         false,
     ],
+    'error code unchanged' => [
+        '#VALUE!',
+        '#VALUE!',
+    ],
+    'no argument' => ['exception'],
 ];

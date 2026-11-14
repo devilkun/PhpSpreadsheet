@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Reader\Xlsx;
 
 use PhpOffice\PhpSpreadsheet\Reader\Xlsx\AutoFilter;
@@ -10,33 +12,17 @@ use SimpleXMLElement;
 
 class AutoFilterTest extends TestCase
 {
-    private function getWorksheetInstance()
-    {
-        return $this->getMockBuilder(Worksheet::class)
-            ->disableOriginalConstructor()
-            ->getMock();
-    }
-
-    private function getXMLInstance($ref)
+    private function getXMLInstance(string $ref): SimpleXMLElement
     {
         return new SimpleXMLElement(
-            '<?xml version="1.0" encoding="UTF-8"?>' .
-            '<root>' .
-                '<autoFilter ref="' . $ref . '"></autoFilter>' .
-            '</root>'
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            . '<root>'
+                . '<autoFilter ref="' . $ref . '"></autoFilter>'
+            . '</root>'
         );
     }
 
-    private function getAutoFilterInstance()
-    {
-        $instance = $this->getMockBuilder(WorksheetAutoFilter::class)
-            ->disableOriginalConstructor()
-            ->getMock();
-
-        return $instance;
-    }
-
-    public function loadDataProvider()
+    public static function loadDataProvider(): array
     {
         return [
             ['$B3$E8', 0, 'B3E8'],
@@ -44,21 +30,19 @@ class AutoFilterTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider loadDataProvider
-     *
-     * @param string $ref
-     * @param int $expectedReadAutoFilterCalled
-     * @param string $expectedRef
-     */
-    public function testLoad($ref, $expectedReadAutoFilterCalled, $expectedRef): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('loadDataProvider')]
+    public function testLoad(string $ref, int $expectedReadAutoFilterCalled, string $expectedRef): void
     {
-        $worksheetAutoFilter = $this->getAutoFilterInstance();
+        $worksheetAutoFilter = $this->getMockBuilder(WorksheetAutoFilter::class)
+            ->disableOriginalConstructor()
+            ->getMock();
         $worksheetAutoFilter->expects(self::exactly($expectedReadAutoFilterCalled ? 1 : 0))
             ->method('setRange')
             ->with($expectedRef);
 
-        $worksheet = $this->getWorksheetInstance();
+        $worksheet = $this->getMockBuilder(Worksheet::class)
+            ->disableOriginalConstructor()
+            ->getMock();
         $worksheet->expects(self::exactly($expectedReadAutoFilterCalled ? 1 : 0))
             ->method('getAutoFilter')
             ->willReturn($worksheetAutoFilter);

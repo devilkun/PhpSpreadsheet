@@ -1,31 +1,98 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\LookupRef;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
-use PhpOffice\PhpSpreadsheet\Calculation\LookupRef;
-use PHPUnit\Framework\TestCase;
+use PhpOffice\PhpSpreadsheet\Calculation\Calculation;
+use PHPUnit\Framework\Attributes\DataProvider;
 
-class MatchTest extends TestCase
+class MatchTest extends AllSetupTeardown
 {
-    protected function setUp(): void
+    /** @param mixed[] $array */
+    #[DataProvider('providerMATCH')]
+    public function testMATCH(mixed $expectedResult, mixed $input, array $array, null|float|int|string $type = null): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
-    }
+        if (is_array($expectedResult)) {
+            $expectedResult = $expectedResult[0];
+        }
+        if ($expectedResult === 'incomplete') {
+            self::markTestIncomplete('Undefined behavior with different results in Excel and PhpSpreadsheet');
+        }
+        $this->mightHaveException($expectedResult);
+        $sheet = $this->getSheet();
+        $maxRow = count($array);
+        $formulaArray = '';
+        for ($row = 1; $row <= $maxRow; ++$row) {
+            $this->setCell("A$row", $array[$row - 1]);
+            $formulaArray = "A1:A$row";
+        }
+        $this->setCell('B1', $input);
+        if ($type === null) {
+            $formula = "=MATCH(B1,$formulaArray)";
+        } else {
+            $formula = "=MATCH(B1, $formulaArray, $type)";
+        }
+        $sheet->getCell('D1')->setValue($formula);
 
-    /**
-     * @dataProvider providerMATCH
-     *
-     * @param mixed $expectedResult
-     */
-    public function testMATCH($expectedResult, ...$args): void
-    {
-        $result = LookupRef::MATCH(...$args);
+        $result = $sheet->getCell('D1')->getCalculatedValue();
         self::assertEquals($expectedResult, $result);
     }
 
-    public function providerMATCH()
+    /** @param mixed[] $array */
+    #[DataProvider('providerMATCH')]
+    public function testMATCHLibre(mixed $expectedResult, mixed $input, array $array, null|float|int|string $type = null): void
+    {
+        $this->setOpenOffice();
+        if (is_array($expectedResult)) {
+            $expectedResult = $expectedResult[1];
+        }
+        if ($expectedResult === 'incomplete') {
+            self::markTestIncomplete('Undefined behavior with different results in Excel and PhpSpreadsheet');
+        }
+        $this->mightHaveException($expectedResult);
+        $sheet = $this->getSheet();
+        $maxRow = count($array);
+        $formulaArray = '';
+        for ($row = 1; $row <= $maxRow; ++$row) {
+            $this->setCell("A$row", $array[$row - 1]);
+            $formulaArray = "A1:A$row";
+        }
+        $this->setCell('B1', $input);
+        if ($type === null) {
+            $formula = "=MATCH(B1,$formulaArray)";
+        } else {
+            $formula = "=MATCH(B1, $formulaArray, $type)";
+        }
+        $sheet->getCell('D1')->setValue($formula);
+
+        $result = $sheet->getCell('D1')->getCalculatedValue();
+        self::assertSame($expectedResult, $result);
+    }
+
+    public static function providerMATCH(): array
     {
         return require 'tests/data/Calculation/LookupRef/MATCH.php';
+    }
+
+    #[DataProvider('providerMatchArray')]
+    public function testMatchArray(array $expectedResult, string $values, string $selections): void
+    {
+        $calculation = Calculation::getInstance();
+
+        $formula = "=MATCH({$values}, {$selections}, 0)";
+        $result = $calculation->calculateFormula($formula);
+        self::assertSame($expectedResult, $result);
+    }
+
+    public static function providerMatchArray(): array
+    {
+        return [
+            'row vector' => [
+                [[2, 5, 3]],
+                '{"Orange", "Blue", "Yellow"}',
+                '{"Red", "Orange", "Yellow", "Green", "Blue"}',
+            ],
+        ];
     }
 }

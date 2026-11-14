@@ -1,30 +1,33 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\MathTrig;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
-use PhpOffice\PhpSpreadsheet\Calculation\MathTrig;
-use PHPUnit\Framework\TestCase;
-
-class GcdTest extends TestCase
+class GcdTest extends AllSetupTeardown
 {
-    protected function setUp(): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerGCD')]
+    public function testGCD(mixed $expectedResult, mixed ...$args): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
-    }
-
-    /**
-     * @dataProvider providerGCD
-     *
-     * @param mixed $expectedResult
-     */
-    public function testGCD($expectedResult, ...$args): void
-    {
-        $result = MathTrig::GCD(...$args);
+        $this->mightHaveException($expectedResult);
+        $sheet = $this->getSheet();
+        $row = 0;
+        foreach ($args as $arg) {
+            ++$row;
+            if ($arg !== null) {
+                $sheet->getCell("A$row")->setValue($arg);
+            }
+        }
+        if ($row < 1) {
+            $sheet->getCell('B1')->setValue('=GCD()');
+        } else {
+            $sheet->getCell('B1')->setValue("=GCD(A1:A$row)");
+        }
+        $result = $sheet->getCell('B1')->getCalculatedValue();
         self::assertEqualsWithDelta($expectedResult, $result, 1E-12);
     }
 
-    public function providerGCD()
+    public static function providerGCD(): array
     {
         return require 'tests/data/Calculation/MathTrig/GCD.php';
     }

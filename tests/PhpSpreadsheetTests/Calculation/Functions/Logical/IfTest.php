@@ -1,30 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\Logical;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
-use PhpOffice\PhpSpreadsheet\Calculation\Logical;
-use PHPUnit\Framework\TestCase;
-
-class IfTest extends TestCase
+class IfTest extends AllSetupTeardown
 {
-    protected function setUp(): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerIF')]
+    public function testIF(mixed $expectedResult, mixed ...$args): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
+        $this->runTestCase('IF', $expectedResult, ...$args);
     }
 
-    /**
-     * @dataProvider providerIF
-     *
-     * @param mixed $expectedResult
-     */
-    public function testIF($expectedResult, ...$args): void
-    {
-        $result = Logical::statementIf(...$args);
-        self::assertEquals($expectedResult, $result);
-    }
-
-    public function providerIF()
+    public static function providerIF(): array
     {
         return require 'tests/data/Calculation/Logical/IF.php';
     }

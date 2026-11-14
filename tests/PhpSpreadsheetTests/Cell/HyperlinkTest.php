@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Cell;
 
 use PhpOffice\PhpSpreadsheet\Cell\Hyperlink;
@@ -23,8 +25,7 @@ class HyperlinkTest extends TestCase
         $newUrlValue = 'http://github.com/PHPOffice/PhpSpreadsheet';
 
         $testInstance = new Hyperlink($initialUrlValue);
-        $result = $testInstance->setUrl($newUrlValue);
-        self::assertInstanceOf(Hyperlink::class, $result);
+        $testInstance->setUrl($newUrlValue);
 
         $result = $testInstance->getUrl();
         self::assertEquals($newUrlValue, $result);
@@ -34,7 +35,7 @@ class HyperlinkTest extends TestCase
     {
         $tooltipValue = 'PhpSpreadsheet Web Site';
 
-        $testInstance = new Hyperlink(null, $tooltipValue);
+        $testInstance = new Hyperlink('', $tooltipValue);
 
         $result = $testInstance->getTooltip();
         self::assertEquals($tooltipValue, $result);
@@ -45,9 +46,8 @@ class HyperlinkTest extends TestCase
         $initialTooltipValue = 'PhpSpreadsheet Web Site';
         $newTooltipValue = 'PhpSpreadsheet Repository on Github';
 
-        $testInstance = new Hyperlink(null, $initialTooltipValue);
-        $result = $testInstance->setTooltip($newTooltipValue);
-        self::assertInstanceOf(Hyperlink::class, $result);
+        $testInstance = new Hyperlink('', $initialTooltipValue);
+        $testInstance->setTooltip($newTooltipValue);
 
         $result = $testInstance->getTooltip();
         self::assertEquals($newTooltipValue, $result);
@@ -69,13 +69,18 @@ class HyperlinkTest extends TestCase
 
     public function testGetHashCode(): void
     {
-        $urlValue = 'https://www.example.com';
-        $tooltipValue = 'PhpSpreadsheet Web Site';
-        $initialExpectedHash = '3a8d5a682dba27276dce538c39402437';
+        $url1 = 'https://www.example.com';
+        $tooltip1 = 'PhpSpreadsheet Web Site';
+        $url2 = 'https://www.example.com';
+        $tooltip2 = 'PhpSpreadsheet Web Site';
+        $url3 = 'https://www.example.com';
+        $tooltip3 = 'PhpSpreadsheet Web Site '; // note extra space
 
-        $testInstance = new Hyperlink($urlValue, $tooltipValue);
-
-        $result = $testInstance->getHashCode();
-        self::assertEquals($initialExpectedHash, $result);
+        $hy1 = new Hyperlink($url1, $tooltip1);
+        $hy2 = new Hyperlink($url2, $tooltip2);
+        $hy3 = new Hyperlink($url3, $tooltip3);
+        self::assertNotSame($hy1, $hy2);
+        self::assertSame($hy1->getHashCode(), $hy2->getHashCode());
+        self::assertNotEquals($hy1->getHashCode(), $hy3->getHashCode());
     }
 }

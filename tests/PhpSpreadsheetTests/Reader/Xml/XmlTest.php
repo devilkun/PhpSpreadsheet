@@ -1,31 +1,33 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Reader\Xml;
 
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Reader\Exception as ReaderException;
 use PhpOffice\PhpSpreadsheet\Reader\Xml;
 use PHPUnit\Framework\TestCase;
 
 class XmlTest extends TestCase
 {
-    /**
-     * @dataProvider providerInvalidSimpleXML
-     *
-     * @param $filename
-     */
-    public function testInvalidSimpleXML($filename): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerInvalidSimpleXML')]
+    public function testInvalidSimpleXML(string $filename): void
     {
-        $this->expectException(\PhpOffice\PhpSpreadsheet\Reader\Exception::class);
-
         $xmlReader = new Xml();
-        $xmlReader->trySimpleXMLLoadString($filename);
+        $this->expectException(ReaderException::class);
+        $this->expectExceptionMessage('Invalid Spreadsheet file');
+        $xmlReader->load($filename);
     }
 
-    public function providerInvalidSimpleXML()
+    public static function providerInvalidSimpleXML(): array
     {
         $tests = [];
-        foreach (glob('tests/data/Reader/Xml/XEETestInvalidSimpleXML*.xml') as $file) {
-            $tests[basename($file)] = [realpath($file)];
+        $glob = glob('tests/data/Reader/Xml/XEETestInvalidSimpleXML*.xml');
+        self::assertNotFalse($glob);
+        foreach ($glob as $file) {
+            $tests[basename($file)] = [(string) realpath($file)];
         }
 
         return $tests;
@@ -46,5 +48,77 @@ class XmlTest extends TestCase
         self::assertEquals(DataType::TYPE_STRING, $hyperlink->getDataType());
         self::assertEquals('PhpSpreadsheet', $hyperlink->getValue());
         self::assertEquals('https://phpspreadsheet.readthedocs.io', $hyperlink->getHyperlink()->getUrl());
+        $spreadsheet->disconnectWorksheets();
+    }
+
+    public function testLoadCorruptedFile(): void
+    {
+        $this->expectException(ReaderException::class);
+        $this->expectExceptionMessage('Cannot load invalid XML file');
+
+        $xmlReader = new Xml();
+        $spreadsheet = @$xmlReader->load('tests/data/Reader/Xml/CorruptedXmlFile.xml');
+    }
+
+    public function testListWorksheetNamesCorruptedFile(): void
+    {
+        $this->expectException(ReaderException::class);
+        $this->expectExceptionMessage('Problem reading');
+
+        $xmlReader = new Xml();
+        @$xmlReader->listWorksheetNames('tests/data/Reader/Xml/CorruptedXmlFile.xml');
+    }
+
+    public function testListWorksheetInfoCorruptedFile(): void
+    {
+        $this->expectException(ReaderException::class);
+        $this->expectExceptionMessage('Problem reading');
+
+        $xmlReader = new Xml();
+        @$xmlReader->listWorksheetInfo('tests/data/Reader/Xml/CorruptedXmlFile.xml');
+    }
+
+    public function testInvalidXMLFromString(): void
+    {
+        $xmlReader = new Xml();
+        $this->expectException(ReaderException::class);
+        $this->expectExceptionMessage('Cannot load invalid XML string: 0');
+        $xmlReader->loadSpreadsheetFromString('0');
+    }
+
+    public function testInvalidXMLFromEmptyString(): void
+    {
+        $xmlReader = new Xml();
+        $this->expectException(ReaderException::class);
+        $this->expectExceptionMessage('Cannot load invalid XML string: ');
+        $xmlReader->loadSpreadsheetFromString('');
+    }
+
+    public function testEmptyFilename(): void
+    {
+        $xmlReader = new Xml();
+        $this->expectException(ReaderException::class);
+        $this->expectExceptionMessage('File "" does not exist');
+        $xmlReader->load('');
+    }
+
+    /**
+     * Ensures that a PHP warning for `Undefined array key "x"` is not triggered.
+     *
+     * Relies on PHPUnit's conversion of PHP warnings, deprecations, and notices to exceptions.
+     * If that warning occurs, the test should fail.
+     */
+    public function testLoadXlsBug4669(): void
+    {
+        $filename = 'tests/data/Reader/Xml/bug4669.xml';
+
+        $reader = IOFactory::createReaderForFile($filename);
+        $reader->setReadDataOnly(true);
+
+        $spreadsheet = $reader->load($filename);
+
+        $sheet = $spreadsheet->getActiveSheet();
+        self::assertSame('Report Date', $sheet->getCell('A1')->getValue());
+        $spreadsheet->disconnectWorksheets();
     }
 }

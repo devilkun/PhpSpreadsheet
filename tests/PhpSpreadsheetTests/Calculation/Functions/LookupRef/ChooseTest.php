@@ -1,31 +1,48 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\LookupRef;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
+use PhpOffice\PhpSpreadsheet\Calculation\Calculation;
 use PhpOffice\PhpSpreadsheet\Calculation\LookupRef;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class ChooseTest extends TestCase
 {
-    protected function setUp(): void
+    #[DataProvider('providerCHOOSE')]
+    public function testCHOOSE(mixed $expectedResult, mixed ...$args): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
-    }
-
-    /**
-     * @dataProvider providerCHOOSE
-     *
-     * @param mixed $expectedResult
-     */
-    public function testCHOOSE($expectedResult, ...$args): void
-    {
-        $result = LookupRef::CHOOSE(...$args);
+        $result = LookupRef\Selection::choose(...$args);
         self::assertEquals($expectedResult, $result);
     }
 
-    public function providerCHOOSE()
+    public static function providerCHOOSE(): array
     {
         return require 'tests/data/Calculation/LookupRef/CHOOSE.php';
+    }
+
+    /** @param string[] $selections */
+    #[DataProvider('providerChooseArray')]
+    public function testChooseArray(array $expectedResult, string $values, array $selections): void
+    {
+        $calculation = Calculation::getInstance();
+
+        $selections = implode(',', $selections);
+        $formula = "=CHOOSE({$values}, {$selections})";
+        $result = $calculation->calculateFormula($formula);
+        self::assertSame($expectedResult, $result);
+    }
+
+    public static function providerChooseArray(): array
+    {
+        return [
+            'row vector' => [
+                [['Orange', 'Blue', 'Yellow']],
+                '{2, 5, 3}',
+                ['"Red"', '"Orange"', '"Yellow"', '"Green"', '"Blue"'],
+            ],
+        ];
     }
 }

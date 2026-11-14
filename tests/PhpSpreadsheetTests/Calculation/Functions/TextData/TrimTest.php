@@ -1,26 +1,51 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\TextData;
 
-use PhpOffice\PhpSpreadsheet\Calculation\TextData;
-use PHPUnit\Framework\TestCase;
+use PhpOffice\PhpSpreadsheet\Calculation\Calculation;
+use PHPUnit\Framework\Attributes\DataProvider;
 
-class TrimTest extends TestCase
+class TrimTest extends AllSetupTeardown
 {
-    /**
-     * @dataProvider providerTRIM
-     *
-     * @param mixed $expectedResult
-     * @param $character
-     */
-    public function testTRIM($expectedResult, $character): void
+    #[DataProvider('providerTRIM')]
+    public function testTRIM(mixed $expectedResult, mixed $character = 'omitted'): void
     {
-        $result = TextData::TRIMSPACES($character);
+        $this->mightHaveException($expectedResult);
+        $sheet = $this->getSheet();
+        if ($character === 'omitted') {
+            $sheet->getCell('B1')->setValue('=TRIM()');
+        } else {
+            $this->setCell('A1', $character);
+            $sheet->getCell('B1')->setValue('=TRIM(A1)');
+        }
+        $result = $sheet->getCell('B1')->getCalculatedValue();
         self::assertEquals($expectedResult, $result);
     }
 
-    public function providerTRIM()
+    public static function providerTRIM(): array
     {
         return require 'tests/data/Calculation/TextData/TRIM.php';
+    }
+
+    /** @param mixed[] $expectedResult */
+    #[DataProvider('providerTrimArray')]
+    public function testTrimArray(array $expectedResult, string $array): void
+    {
+        $calculation = Calculation::getInstance();
+
+        $formula = "=TRIM({$array})";
+        $result = $calculation->calculateFormula($formula);
+        self::assertSame($expectedResult, $result);
+    }
+
+    public static function providerTrimArray(): array
+    {
+        return [
+            'row vector' => [[['PHP', 'MS Excel', 'Open/Libre Office']], '{"  PHP ", " MS   Excel ", " Open/Libre   Office "}'],
+            'column vector' => [[['PHP'], ['MS Excel'], ['Open/Libre Office']], '{"  PHP "; " MS   Excel "; " Open/Libre   Office "}'],
+            'matrix' => [[['PHP', 'MS Excel'], ['PhpSpreadsheet', 'Open/Libre Office']], '{"  PHP ", " MS   Excel "; " PhpSpreadsheet  ", " Open/Libre   Office "}'],
+        ];
     }
 }

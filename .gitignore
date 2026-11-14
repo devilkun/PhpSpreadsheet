@@ -2,9 +2,14 @@
 /analysis
 /vendor/
 /phpunit.xml
+.phpunit.result.cache
+.DS_Store
 
 ## IDE support
 *.buildpath
 *.project
 /.settings
 /.idea
+
+## mkdocs output
+/site

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     [
         '',
@@ -16,7 +18,7 @@ return [
     [
         '#VALUE!',
         'QWERTYUIOP',
-        -1,
+        0,
         1,
     ],
     [
@@ -26,9 +28,34 @@ return [
         -1,
     ],
     [
+        '#VALUE!',
+        'QWERTYUIOP',
+        'NaN',
+        1,
+    ],
+    [
+        '#VALUE!',
+        'QWERTYUIOP',
+        2,
+        'NaN',
+    ],
+    'length null treated as zero' => [
         '',
         'QWERTYUIOP',
+        2,
+        null,
+    ],
+    'length not specified' => [
+        'exception',
+        'QWERTYUIOP',
         5,
+    ],
+    'start not specified' => [
+        'exception',
+        'QWERTYUIOP',
+    ],
+    'string not specified' => [
+        'exception',
     ],
     [
         'IOP',
@@ -37,10 +64,34 @@ return [
         20,
     ],
     [
+        '',
+        'QWERTYUIOP',
+        999,
+        2,
+    ],
+    [
         'DEF',
         'ABCDEFGHI',
         4,
         3,
+    ],
+    [
+        'δύο',
+        'Ενα δύο τρία τέσσερα πέντε',
+        5,
+        3,
+    ],
+    [
+        'δύο τρία',
+        'Ενα δύο τρία τέσσερα πέντε',
+        5,
+        8,
+    ],
+    [
+        'τρία τέσσερα',
+        'Ενα δύο τρία τέσσερα πέντε',
+        9,
+        12,
     ],
     [
         'R',

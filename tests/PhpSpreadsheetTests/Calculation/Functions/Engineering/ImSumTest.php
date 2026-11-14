@@ -1,48 +1,88 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PhpOffice\PhpSpreadsheetTests\Calculation\Functions\Engineering;
 
-use PhpOffice\PhpSpreadsheet\Calculation\Engineering;
-use PhpOffice\PhpSpreadsheet\Calculation\Functions;
+use PhpOffice\PhpSpreadsheet\Calculation\Calculation;
+use PhpOffice\PhpSpreadsheet\Calculation\Engineering\ComplexOperations;
+use PhpOffice\PhpSpreadsheet\Calculation\Exception as CalculationException;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheetTests\Calculation\Functions\FormulaArguments;
 use PhpOffice\PhpSpreadsheetTests\Custom\ComplexAssert;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
-class ImSumTest extends TestCase
+class ImSumTest extends ComplexAssert
 {
-    const COMPLEX_PRECISION = 1E-8;
-
     /**
-     * @var ComplexAssert
+     * @param string ...$args variadic arguments
      */
-    protected $complexAssert;
-
-    protected function setUp(): void
+    #[DataProvider('providerIMSUM')]
+    public function testDirectCallToIMSUM(mixed $expectedResult, ...$args): void
     {
-        Functions::setCompatibilityMode(Functions::COMPATIBILITY_EXCEL);
-        $this->complexAssert = new ComplexAssert();
+        $result = ComplexOperations::IMSUM(...$args);
+        $this->assertComplexEquals($expectedResult, $result);
     }
 
-    protected function tearDown(): void
+    #[DataProvider('providerIMSUM')]
+    public function testIMSUMAsFormula(mixed $expectedResult, mixed ...$args): void
     {
-        $this->complexAssert = null;
+        $arguments = new FormulaArguments(...$args);
+
+        $calculation = Calculation::getInstance();
+        $formula = "=IMSUM({$arguments})";
+
+        /** @var float|int|string */
+        $result = $calculation->calculateFormula($formula);
+        $this->assertComplexEquals($expectedResult, $result);
     }
 
-    /**
-     * @dataProvider providerIMSUM
-     *
-     * @param mixed $expectedResult
-     */
-    public function testIMSUM($expectedResult, ...$args): void
+    #[DataProvider('providerIMSUM')]
+    public function testIMSUMInWorksheet(mixed $expectedResult, mixed ...$args): void
     {
-        $result = Engineering::IMSUM(...$args);
-        self::assertTrue(
-            $this->complexAssert->assertComplexEquals($expectedResult, $result, self::COMPLEX_PRECISION),
-            $this->complexAssert->getErrorMessage()
-        );
+        $arguments = new FormulaArguments(...$args);
+
+        $spreadsheet = new Spreadsheet();
+        $worksheet = $spreadsheet->getActiveSheet();
+        $argumentCells = $arguments->populateWorksheet($worksheet);
+        $formula = "=IMSUM({$argumentCells})";
+
+        $result = $worksheet->setCellValue('A1', $formula)
+            ->getCell('A1')
+            ->getCalculatedValue();
+        $this->assertComplexEquals($expectedResult, $result);
+
+        $spreadsheet->disconnectWorksheets();
     }
 
-    public function providerIMSUM()
+    public static function providerIMSUM(): array
     {
         return require 'tests/data/Calculation/Engineering/IMSUM.php';
+    }
+
+    #[DataProvider('providerUnhappyIMSUM')]
+    public function testIMSUMUnhappyPath(string $expectedException, mixed ...$args): void
+    {
+        $arguments = new FormulaArguments(...$args);
+
+        $spreadsheet = new Spreadsheet();
+        $worksheet = $spreadsheet->getActiveSheet();
+        $argumentCells = $arguments->populateWorksheet($worksheet);
+        $formula = "=IMSUM({$argumentCells})";
+
+        $this->expectException(CalculationException::class);
+        $this->expectExceptionMessage($expectedException);
+        $worksheet->setCellValue('A1', $formula)
+            ->getCell('A1')
+            ->getCalculatedValue();
+
+        $spreadsheet->disconnectWorksheets();
+    }
+
+    public static function providerUnhappyIMSUM(): array
+    {
+        return [
+            ['Formula Error: Wrong number of arguments for IMSUM() function'],
+        ];
     }
 }
